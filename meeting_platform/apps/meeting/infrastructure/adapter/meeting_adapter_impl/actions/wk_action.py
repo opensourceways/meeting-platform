@@ -16,13 +16,11 @@ class WkCreateAction(CreateAction):
     start: str
     end: str
     topic: str
-    host_id: str
     is_record: str
 
 
 @dataclass
 class WkUpdateAction(UpdateAction):
-    host_id: str
     mid: str
     date: str
     start: str
@@ -33,13 +31,11 @@ class WkUpdateAction(UpdateAction):
 
 @dataclass
 class WkDeleteAction(DeleteAction):
-    host_id: str
     mid: str
 
 
 @dataclass
 class WkGetParticipantsAction(GetParticipantsAction):
-    host_id: str
     mid: str
     date: str
     start: str
@@ -48,4 +44,7 @@ class WkGetParticipantsAction(GetParticipantsAction):
 
 @dataclass
 class WkGetVideo(GetVideoAction):
-    meeting: dict
+    mid: str
+    date: str
+    start: str
+    end: str

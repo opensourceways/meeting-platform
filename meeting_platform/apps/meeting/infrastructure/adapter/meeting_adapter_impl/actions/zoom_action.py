@@ -16,7 +16,6 @@ class ZoomCreateAction(CreateAction):
     start: str
     end: str
     topic: str
-    host_id: str
     is_record: bool
 
 
@@ -42,4 +41,4 @@ class ZoomGetParticipantsAction(GetParticipantsAction):
 
 @dataclass
 class ZoomGetVideo(GetVideoAction):
-    meeting: dict
+    mid: str

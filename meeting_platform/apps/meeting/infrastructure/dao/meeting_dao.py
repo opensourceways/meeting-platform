@@ -33,3 +33,18 @@ class MeetingDao(Meeting):
     @classmethod
     def delete_by_id(cls, meeting_id):
         return cls.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1)
+
+    @classmethod
+    def get_upload_mid_by_community(cls, community):
+        return cls.objects.filter(is_delete=0, community=community, is_record=1, is_upload=0,
+                                  replay_url__isnull=False).values_list('mid', flat=True)
+
+    @classmethod
+    def update_upload_status_by_community_and_mid(cls, community, mid):
+        return cls.objects.filter(is_delete=0, community=community, is_record=1).filter(mid__in=mid). \
+            update(is_upload=1)
+
+    @classmethod
+    def get_un_upload_all_by_community(cls, community):
+        return cls.objects.filter(is_delete=0, community=community, is_record=1, is_upload=0,
+                                  replay_url__isnull=True).all()

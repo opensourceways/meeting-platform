@@ -14,6 +14,10 @@ class ObsAdapter(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def get_object_metadata(self, *args, **kwargs):
+        raise NotImplementedError
+
+    @abstractmethod
     def list_objects(self, *args, **kwargs):
         raise NotImplementedError
 

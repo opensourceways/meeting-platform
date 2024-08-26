@@ -33,7 +33,7 @@ class _ApiMods:
         return self._get_mods()
 
 
-def handler_meeting(community, platform, action):
+def handler_meeting(community, platform, host_id, action):
     mods = _ApiMods().get_mods
     for mod_name in mods:
         if mod_name == "base_api":
@@ -46,7 +46,7 @@ def handler_meeting(community, platform, action):
                 continue
             if str(cls.__dict__.get("meeting_type")).lower() != platform.lower():
                 continue
-            instance = cls(community)
+            instance = cls(community, platform, host_id)
             if not hasattr(instance, action.function_action):
                 raise RuntimeError("class/{} must have the action attribute/{}".
                                    format(str(cls), str(action.function_action)))

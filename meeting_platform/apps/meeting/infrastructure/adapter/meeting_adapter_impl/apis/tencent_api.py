@@ -19,23 +19,23 @@ from meeting_platform.utils.common import make_nonce, get_video_path
 from meeting_platform.utils.file_stream import download_big_file
 from meeting.domain.repository.meeting_adapter import MeetingAdapter
 from meeting.infrastructure.adapter.meeting_adapter_impl.actions.tencent_action import TencentCreateAction, \
-    TencentDeleteAction, TencentGetParticipantsAction, TencentGetVideo
+    TencentDeleteAction, TencentGetParticipantsAction, TencentGetVideo, TencentUpdateAction
 
 logger = logging.getLogger('log')
 
 
-# noinspection SpellCheckingInspection
 class TencentApi(MeetingAdapter):
     meeting_type = "tencent"  # it is platform
 
     create_path = "/v1/meetings"
+    update_path = "/v1/meetings/{}"
     delete_path = "/v1/meetings/{}/cancel"
     participants_path = "/v1/meetings/{}/participants?userid={}"
     record_path = "/v1/corp/records?start_time={}&end_time={}&page_size=20&page={}"
     video_download_path = "/v1/addresses/{}?userid={}"
 
-    def __init__(self, community, host_id):
-        platform_info = settings.VAULT_CONF["COMMUNITY_HOST"][community]
+    def __init__(self, community, platform, host_id):
+        platform_info = settings.COMMUNITY_HOST[community][platform]
         cur_platform_info = [i for i in platform_info if i["HOST"] == host_id]
         if len(cur_platform_info) == 1:
             self.app_id = cur_platform_info[0]["TENCENT_APP_ID"]
@@ -43,10 +43,11 @@ class TencentApi(MeetingAdapter):
             self.secret_id = cur_platform_info[0]["TENCENT_SECRET_ID"]
             self.secret_key = cur_platform_info[0]["TENCENT_SECRET_KEY"]
             self.host_key = cur_platform_info[0]["TENCENT_HOST_KEY"]
+            self.host_id = host_id
         else:
             raise RuntimeError(
                 "[TencentApi] init TencentApi failed, and get config({}) failed.".format(len(cur_platform_info)))
-        self.api_prefix = settings.CONF["API_PREFIX"]["TENCENT_API_PREFIX"]
+        self.api_prefix = settings.API_PREFIX["TENCENT_API_PREFIX"]
         self.time_out = settings.REQUEST_TIMEOUT
         self.upload_date = settings.UPLOAD_BILIBILI_DATE
         self.video_min_size = settings.VIDEO_MINI_SIZE
@@ -82,14 +83,14 @@ class TencentApi(MeetingAdapter):
     def create(self, action):
         """create meeting"""
         if not isinstance(action, TencentCreateAction):
-            raise RuntimeError("action must be the subclass of TencentCreateAction")
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentCreateAction")
         date = action.date
         start_time = date + ' ' + action.start
         end_time = date + ' ' + action.end
         start_time = self._get_time(start_time)
         end_time = self._get_time(end_time)
         payload = {
-            "userid": action.host_id,
+            "userid": self.host_id,
             "instanceid": 1,
             "subject": action.topic,
             "type": 0,
@@ -110,10 +111,10 @@ class TencentApi(MeetingAdapter):
         signature, headers = self._get_signature('POST', uri, json.dumps(payload))
         r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=self.time_out)
         resp_dict = {
-            'host_id': action.host_id
+            'host_id': self.host_id
         }
         if r.status_code != 200:
-            logger.error('Fail to create meeting, status_code is {}'.format(r.status_code))
+            logger.error('[TencentApi] Fail to create meeting, status_code is {}'.format(r.status_code))
             return r.status_code, resp_dict
         ret_json = r.json()
         resp_dict['mid'] = ret_json['meeting_info_list'][0]['meeting_code']
@@ -121,14 +122,54 @@ class TencentApi(MeetingAdapter):
         resp_dict['join_url'] = ret_json['meeting_info_list'][0]['join_url']
         return r.status_code, resp_dict
 
-    def update(self):
-        raise NotImplementedError
+    def update(self, action):
+        if not isinstance(action, TencentUpdateAction):
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentUpdateAction")
+        date = action.date
+        start_time = date + ' ' + action.start
+        end_time = date + ' ' + action.end
+        start_time = self._get_time(start_time)
+        end_time = self._get_time(end_time)
+        payload = {
+            "userid": self.host_id,
+            "instanceid": 1,
+            "subject": action.topic,
+            "type": 0,
+            "start_time": start_time,
+            "end_time": end_time,
+            "settings": {
+                "mute_enable_join": True
+            },
+            "enable_host_key": True,
+            "host_key": self.host_key
+        }
+        if action.is_record:
+            payload['settings']['auto_record_type'] = 'cloud'
+            payload['settings']['participant_join_auto_record'] = True
+            payload['settings']['enable_host_pause_auto_record'] = True
+        else:
+            payload['settings']['auto_record_type'] = 'none'
+        uri = self.update_path.format(action.mmid)
+        url = self._get_url(uri)
+        signature, headers = self._get_signature('PUT', uri, json.dumps(payload))
+        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=self.time_out)
+        resp_dict = {
+            'host_id': self.host_id
+        }
+        if r.status_code != 200:
+            logger.error('[TencentApi] Fail to create meeting, status_code is {}'.format(r.status_code))
+            return r.status_code, resp_dict
+        ret_json = r.json()
+        resp_dict['mid'] = ret_json['meeting_info_list'][0]['meeting_code']
+        resp_dict['mmid'] = ret_json['meeting_info_list'][0]['meeting_id']
+        resp_dict['join_url'] = ret_json['meeting_info_list'][0]['join_url']
+        return r.status_code, resp_dict
 
     def delete(self, action):
         if not isinstance(action, TencentDeleteAction):
-            raise RuntimeError("action must be the subclass of TencentDeleteAction")
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentDeleteAction")
         payload = json.dumps({
-            "userid": action.host_id,
+            "userid": self.host_id,
             "instanceid": 1,
             "reason_code": 1
         })
@@ -142,15 +183,14 @@ class TencentApi(MeetingAdapter):
             logger.error('Fail to cancel meeting {}'.format(mid))
             logger.error(r.json())
             return r.status_code
-        logger.info('Cancel meeting {}'.format(mid))
+        logger.info('[TencentApi] Cancel meeting {}'.format(mid))
         return r.status_code
 
     def get_participants(self, action):
         if not isinstance(action, TencentGetParticipantsAction):
-            raise RuntimeError("action must be the subclass of TencentGetParticipantsAction")
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentGetParticipantsAction")
         mmid = action.mmid
-        host_id = action.host_id
-        uri = self.participants_path.format(mmid, host_id)
+        uri = self.participants_path.format(mmid, self.host_id)
         url = self._get_url(uri)
         signature, headers = self._get_signature('GET', uri, "")
         r = requests.get(url, headers=headers, timeout=self.time_out)
@@ -185,14 +225,14 @@ class TencentApi(MeetingAdapter):
 
     def _filter_records(self, action, recordings):
         """filter the avaliable record"""
-        mid = action.meeting["mid"]
+        mid = action.mid
         if not recordings:
-            logger.error("{}: no available recordings".format(mid))
+            logger.error("[TencentApi] {}: no available recordings".format(mid))
             return
         match_record = dict()
-        mmid = action.meeting["mmid"]
-        date = action.meeting["date"]
-        start = action.meeting["start"]
+        mmid = action.mmid
+        date = action.date
+        start = action.start
         start_time = ' '.join([date, start])
         start_timestamp = int(datetime.timestamp(datetime.strptime(start_time, '%Y-%m-%d %H:%M')))
         for record in recordings:
@@ -216,7 +256,7 @@ class TencentApi(MeetingAdapter):
                 match_record['record_size'] = record_file.get('record_size')
                 match_record['userid'] = record.get('userid')
         if not match_record:
-            logger.error('{}: Find no recordings about Tencent meeting'.format(mid))
+            logger.error('[TencentApi]Find no recordings about Tencent meeting:{}'.format(mid))
             return
         return match_record
 
@@ -233,10 +273,10 @@ class TencentApi(MeetingAdapter):
 
     def _download_video(self, action, avaliable_record):
         """download the video"""
-        mid = action.meeting["mid"]
+        mid = action.mid
         download_url = self._get_video_download(avaliable_record.get('record_file_id'), avaliable_record.get('userid'))
         if not download_url:
-            logger.error("{}:get empty download url".format(mid))
+            logger.error("[TencentApi] get empty download url:{}".format(mid))
             return
         target_filename = get_video_path(mid)
         download_big_file(download_url, target_filename)
@@ -244,9 +284,10 @@ class TencentApi(MeetingAdapter):
 
     def get_video(self, action):
         if not isinstance(action, TencentGetVideo):
-            raise RuntimeError("action must be the subclass of TencentPrepareVideo")
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentPrepareVideo")
         recordings = self._get_records()
         avaliable_record = self._filter_records(action, recordings)
         if not avaliable_record:
+            logger.info('[TencentApi] filter to no available recordings:{}'.format(action.mid))
             return
         return self._download_video(action, avaliable_record)

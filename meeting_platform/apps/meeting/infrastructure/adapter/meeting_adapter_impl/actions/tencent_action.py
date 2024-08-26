@@ -16,14 +16,14 @@ class TencentCreateAction(CreateAction):
     start: str
     end: str
     topic: str
-    host_id: str
     is_record: bool
 
 
+# noinspection SpellCheckingInspection
 @dataclass
 class TencentUpdateAction(UpdateAction):
-    host_id: str
     mid: str
+    mmid: str
     date: str
     start: str
     end: str
@@ -34,7 +34,6 @@ class TencentUpdateAction(UpdateAction):
 # noinspection SpellCheckingInspection
 @dataclass
 class TencentDeleteAction(DeleteAction):
-    host_id: str
     mid: str
     mmid: str
 
@@ -42,10 +41,13 @@ class TencentDeleteAction(DeleteAction):
 # noinspection SpellCheckingInspection
 @dataclass
 class TencentGetParticipantsAction(GetParticipantsAction):
-    host_id: str
     mmid: str
 
 
+# noinspection SpellCheckingInspection
 @dataclass
 class TencentGetVideo(GetVideoAction):
-    meeting: dict
+    mid: str
+    mmid: str
+    date: str
+    start: str

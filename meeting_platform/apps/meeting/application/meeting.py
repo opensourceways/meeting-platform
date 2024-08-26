@@ -73,8 +73,8 @@ class MeetingApp:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
 
     def _create_meeting(self, host_id, meeting):
-        action = self.meeting_adapter_impl.get_create_action(meeting["platform"], host_id, meeting)
-        status, resp = handler_meeting(meeting["community"], meeting["platform"], action)
+        action = self.meeting_adapter_impl.get_create_action(meeting["platform"], meeting)
+        status, resp = handler_meeting(meeting["community"], meeting["platform"], host_id, action)
         if status not in [200, 201]:
             logger.error("[MeetingApp/_create_meeting] {}/{}: Failed to create meeting, and code is {}"
                          .format(meeting["community"], meeting["platform"], str(status)))
@@ -98,7 +98,7 @@ class MeetingApp:
 
     def _update_meeting(self, meeting):
         action = self.meeting_adapter_impl.get_update_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], action)
+        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if status != 200:
             logger.error('[MeetingApp/_update_meeting] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
@@ -129,8 +129,8 @@ class MeetingApp:
         return result
 
     def _delete_meeting(self, meeting):
-        action = self.meeting_adapter_impl.get_delete_action(meeting)
-        status = handler_meeting(meeting["platform"], action)
+        action = self.meeting_adapter_impl.get_delete_action(meeting["platform"], meeting)
+        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if status != 200:
             logger.error('[MeetingApp/_delete_meeting] {}/{}: Failed to delete meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
@@ -158,8 +158,8 @@ class MeetingApp:
         return result
 
     def _get_participants(self, meeting):
-        action = self.meeting_adapter_impl.get_participants_action(meeting)
-        status = handler_meeting(meeting["platform"], action)
+        action = self.meeting_adapter_impl.get_participants_action(meeting["platform"], meeting)
+        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if status != 200:
             logger.error('[MeetingApp/_get_participants] {}/{}: Failed to get participants {}'
                          .format(meeting["community"], meeting["platform"], str(status)))

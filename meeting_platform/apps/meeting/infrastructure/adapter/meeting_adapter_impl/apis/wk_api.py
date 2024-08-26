@@ -22,7 +22,6 @@ from meeting.infrastructure.adapter.meeting_adapter_impl.actions.wk_action impor
 logger = logging.getLogger('log')
 
 
-# noinspection SpellCheckingInspection
 class WkApi(MeetingAdapter):
     meeting_type = "welink"  # it is platform
 
@@ -35,24 +34,25 @@ class WkApi(MeetingAdapter):
     download_url_path = "/v1/mmc/management/record/downloadurls"
     list_recordings_path = "/v1/mmc/management/record/files"
 
-    def __init__(self, community, host_id):
-        platform_info = settings.VAULT_CONF["COMMUNITY_HOST"][community]
+    def __init__(self, community, platform, host_id):
+        platform_info = settings.COMMUNITY_HOST[community][platform]
         cur_platform_info = [i for i in platform_info if i["HOST"] == host_id]
         if len(cur_platform_info) == 1:
             self.account = cur_platform_info[0]["ACCOUNT"]
             self.pwd = cur_platform_info[0]["PWD"]
+            self.host_id = host_id
         else:
             raise RuntimeError(
                 "[WkApi] init WkApi failed, and get config({}) failed.".format(len(cur_platform_info)))
 
-        self.api_prefix = settings.CONF["API_PREFIX"]["WELINK_API_PREFIX"]
+        self.api_prefix = settings.API_PREFIX["WELINK_API_PREFIX"]
         self.time_out = settings.REQUEST_TIMEOUT
         self.upload_date = settings.UPLOAD_BILIBILI_DATE
 
     def _get_url(self, uri):
         return self.api_prefix + uri
 
-    def _create_proxy_token(self, host_id):
+    def _create_proxy_token(self):
         """获取代理鉴权token"""
         headers = {
             'Content-Type': 'application/json; charset=UTF-8'
@@ -67,15 +67,15 @@ class WkApi(MeetingAdapter):
         response = requests.post(self._get_url(self.proxy_token_path), headers=headers, data=json.dumps(payload),
                                  timeout=self.time_out)
         if response.status_code != 200:
-            logger.error('Fail to get proxy token, status_code: {}'.format(response.status_code))
+            logger.error('[WkApi] Fail to get proxy token, status_code: {}'.format(response.status_code))
             return None
         return response.json()['accessToken']
 
     def create(self, action):
         """创建会议"""
         if not isinstance(action, WkCreateAction):
-            raise RuntimeError("action must be the subclass of WkCreateAction")
-        access_token = self._create_proxy_token(action.host_id)
+            raise RuntimeError("[WkApi] action must be the subclass of WkCreateAction")
+        access_token = self._create_proxy_token()
         start_time = (datetime.datetime.strptime(action.date + action.start, '%Y-%m-%d%H:%M') -
                       datetime.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
         duration_time = int((datetime.datetime.strptime(action.end, '%H:%M') -
@@ -99,7 +99,7 @@ class WkApi(MeetingAdapter):
                 'enableWaitingRoom': False
             },
             'vmrFlag': 1,
-            'vmrID': action.host_id
+            'vmrID': self.host_id
         }
         if action.is_record:
             data['isAutoRecord'] = 1
@@ -108,18 +108,18 @@ class WkApi(MeetingAdapter):
                                  timeout=self.time_out)
         resp_dict = {}
         if response.status_code != 200:
-            logger.error('Fail to create meeting, status_code is {}'.format(response.status_code))
+            logger.error('[WkApi] Fail to create meeting, status_code is {}'.format(response.status_code))
             return response.status_code, resp_dict
         resp_dict['mid'] = response.json()[0]['conferenceID']
         resp_dict['start_url'] = response.json()[0]['chairJoinUri']
         resp_dict['join_url'] = response.json()[0]['guestJoinUri']
-        resp_dict['host_id'] = action.host_id
+        resp_dict['host_id'] = self.host_id
         return response.status_code, resp_dict
 
     def update(self, action):
         if not isinstance(action, WkUpdateAction):
-            raise RuntimeError("action must be the subclass of WkUpdateAction")
-        access_token = self._create_proxy_token(action.host_id)
+            raise RuntimeError("[WkApi] action must be the subclass of WkUpdateAction")
+        access_token = self._create_proxy_token()
         start_time = (datetime.datetime.strptime(action.date + action.start, '%Y-%m-%d%H:%M') -
                       datetime.timedelta(hours=8)).strftime('%Y-%m-%d %H:%M')
         length = int((datetime.datetime.strptime(action.end, '%H:%M') -
@@ -151,8 +151,8 @@ class WkApi(MeetingAdapter):
     def delete(self, action):
         """删除会议"""
         if not isinstance(action, WkDeleteAction):
-            raise RuntimeError("action must be the subclass of WkDeleteAction")
-        access_token = self._create_proxy_token(action.host_id)
+            raise RuntimeError("[WkApi] action must be the subclass of WkDeleteAction")
+        access_token = self._create_proxy_token()
         headers = {
             'X-Access-Token': access_token
         }
@@ -163,14 +163,14 @@ class WkApi(MeetingAdapter):
         response = requests.delete(self._get_url(self.delete_path), headers=headers, params=params,
                                    timeout=self.time_out)
         if response.status_code != 200:
-            logger.error('Fail to cancel meeting {}, and return data:{}'.format(action.mid, response.json()))
+            logger.error('[WkApi] Fail to cancel meeting {}, and return data:{}'.format(action.mid, response.json()))
             return response.status_code
-        logger.info('Cancel meeting {}'.format(action.mid))
+        logger.info('[WkApi] Cancel meeting {}'.format(action.mid))
         return response.status_code
 
     def _list_history_meeting(self, action):
         """获取历史会议列表"""
-        access_token = self._create_proxy_token(action.host_id)
+        access_token = self._create_proxy_token()
         start_time = ' '.join([action.date, action.start])
         end_time = ' '.join([action.date, action.end])
         start_date = int(time.mktime((datetime.datetime.strptime(start_time, '%Y-%m-%d %H:%M') -
@@ -188,7 +188,7 @@ class WkApi(MeetingAdapter):
         response = requests.get(self._get_url(self.list_history_path), headers=headers, params=params,
                                 timeout=self.time_out)
         if response.status_code != 200:
-            logger.error('Fail to get history meetings list')
+            logger.error('[WkApi] Fail to get history meetings list')
             logger.error(response.json())
             return {}
         return response.json()
@@ -196,8 +196,8 @@ class WkApi(MeetingAdapter):
     def get_participants(self, action):
         """获取参会人员"""
         if not isinstance(action, WkGetParticipantsAction):
-            raise RuntimeError("action must be the subclass of WkGetParticipantsAction")
-        access_token = self._create_proxy_token(action.host_id)
+            raise RuntimeError("[WkApi] action must be the subclass of WkGetParticipantsAction")
+        access_token = self._create_proxy_token()
         if not access_token:
             return 401, {'message': 'UnAuthorized'}
         headers = {
@@ -229,9 +229,9 @@ class WkApi(MeetingAdapter):
                     break
         return status, participants
 
-    def _list_recordings(self, host_id):
+    def _list_recordings(self):
         """获取录像列表"""
-        access_token = self._create_proxy_token(host_id)
+        access_token = self._create_proxy_token()
         tn = int(time.time())
         headers = {
             'X-Access-Token': access_token
@@ -245,10 +245,10 @@ class WkApi(MeetingAdapter):
                                 timeout=self.time_out)
         return response.status_code, response.json()
 
-    def _get_download_url(self, conf_uuid, host_id):
+    def _get_download_url(self, conf_uuid):
         """获取录像下载地址"""
         headers = {
-            'X-Access-Token': self._create_proxy_token(host_id)
+            'X-Access-Token': self._create_proxy_token()
         }
         params = {
             'confUUID': conf_uuid
@@ -267,19 +267,18 @@ class WkApi(MeetingAdapter):
     # noinspection PyPep8Naming
     def _get_records(self, action):
         """get the records"""
-        mid = action.meeting["mid"]
-        date = action.meeting["date"]
-        start = action.meeting["start"]
-        end = action.meeting["end"]
+        mid = action.mid
+        date = action.date
+        start = action.start
+        end = action.end
         start_time = date + ' ' + start
         end_time = date + ' ' + end
-        host_id = action.meeting["host_id"]
-        status, recordings = self._list_recordings(host_id)
+        status, recordings = self._list_recordings()
         if status != 200:
-            logger.error('{}:Fail to get welink recordings'.format(mid))
+            logger.error('[WkApi] {}:Fail to get welink recordings'.format(mid))
             return []
         if recordings['count'] == 0:
-            logger.error('{}:get empty welink recordings'.format(mid))
+            logger.error('[WkApi] {}:get empty welink recordings'.format(mid))
             return []
         available_recordings = []
         start_order_set = set()
@@ -312,21 +311,20 @@ class WkApi(MeetingAdapter):
 
     def _download_video(self, action, recordings):
         """download video"""
-        mid = action.meeting["mid"]
+        mid = action.mid
         if not recordings:
-            logger.info('{}: no available recordings'.format(mid))
+            logger.info('[WkApi] no available recordings:{}'.format(mid))
             return
         waiting_download_recordings = []
-        host_id = action.meeting["host_id"]
         for available_recording in recordings:
             conf_uuid = available_recording['confUUID']
-            status, res = self._get_download_url(conf_uuid, host_id)
+            status, res = self._get_download_url(conf_uuid)
             record_urls = res['recordUrls'][0]['urls']
             for record_url in record_urls:
                 if record_url['fileType'].lower() in ['hd', 'aux']:
                     waiting_download_recordings.append(record_url)
         if not waiting_download_recordings:
-            logger.info('{}: filter to no available recordings'.format(mid))
+            logger.info('[WkApi] filter to no available recordings:{}'.format(mid))
             return
         token = waiting_download_recordings[-1]['token']
         download_url = waiting_download_recordings[-1]['url']
@@ -340,6 +338,6 @@ class WkApi(MeetingAdapter):
             raise RuntimeError("action must be the subclass of TencentPrepareVideo")
         recordings = self._get_records(action)
         if not recordings:
-            logger.info('{}: filter to no available recordings'.format(action.meeting["mid"]))
+            logger.info('[WkApi] filter to no available recordings which mid is：{}'.format(action.mid))
             return
         return self._download_video(action, recordings)
