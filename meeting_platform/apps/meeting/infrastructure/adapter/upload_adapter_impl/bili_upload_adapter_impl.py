@@ -8,6 +8,7 @@ import logging
 from meeting.domain.repository.upload_adapter import UploadAdapter
 from meeting.infrastructure.adapter.bilibili_adapter_impl import BiliAdapterImpl
 from meeting.infrastructure.dao.meeting_dao import MeetingDao
+from meeting_platform.utils.common import func_retry
 
 logger = logging.getLogger("log")
 
@@ -19,6 +20,7 @@ class BiliUploadAdapterImpl(UploadAdapter):
         super(BiliUploadAdapterImpl, self).__init__(meeting)
         self.bili_adapter_impl = BiliAdapterImpl(meeting["community"])
 
+    @func_retry()
     def upload(self, video_path, cover_path):
         meeting_info = {
             'tag': '{}, SIG meeting, recording'.format(self.meeting["community"]),

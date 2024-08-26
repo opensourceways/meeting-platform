@@ -17,20 +17,17 @@ logger = getLogger("log")
 class EmailClient(object):
     """EmailClient"""
 
-    def __init__(self, community):
+    def __init__(self, host, port, user, pwd):
         """init smtp client"""
-        self.community = community
-        self.smtp_info = settings.COMMUNITY_SMTP[community]
-        self.server = smtplib.SMTP(self.smtp_info["SMTP_SERVER_HOST"], self.smtp_info["SMTP_SERVER_PORT"])
+        self.server = smtplib.SMTP(host, port)
         self.server.ehlo()
         self.server.starttls()
-        self.server.login(self.smtp_info["SMTP_SERVER_USER"], self.smtp_info["SMTP_SERVER_PASS"])
+        self.server.login(user, pwd)
 
-    def send_message(self, receive_str, msg, is_close=True):
+    def send_message(self, from_str, receive_str, msg, is_close=True):
         """send the message by email client"""
         try:
-            msg['From'] = '{} conference <{}>'.format(self.community, self.smtp_info["SMTP_MESSAGE_FROM"])
-            return self.server.sendmail(self.smtp_info["SMTP_MESSAGE_FROM"], receive_str, msg)
+            return self.server.sendmail(from_str, receive_str, msg.as_string())
         except smtplib.SMTPException as e:
             logger.error("[EmailClient] e:{},traceback:{}".format(e, traceback.format_exc()))
         finally:

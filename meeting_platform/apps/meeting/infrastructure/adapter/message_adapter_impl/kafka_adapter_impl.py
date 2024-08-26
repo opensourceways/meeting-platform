@@ -11,6 +11,7 @@ from abc import ABC
 from django.conf import settings
 
 from meeting_platform.utils.client.kafka_client import KafKaClient
+from meeting_platform.utils.common import func_retry
 from meeting.domain.repository.message_adapter import MessageAdapter
 
 logger = logging.getLogger("log")
@@ -27,6 +28,7 @@ class MessageKafKaAdapterImpl(MessageAdapter, ABC):
 
 class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
 
+    @func_retry()
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:
@@ -43,6 +45,7 @@ class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
 
 class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
 
+    @func_retry()
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:
@@ -58,6 +61,8 @@ class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
 
 
 class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
+
+    @func_retry()
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:

@@ -22,8 +22,23 @@ from meeting_platform.utils.file_stream import read_content
 logger = logging.getLogger("log")
 
 
+class EmailAdapter:
+    """email Adapter"""
+
+    def __init__(self, community):
+        self.community = community
+        smtp_info = settings.COMMUNITY_SMTP[community]
+        self.smtp_message_from = smtp_info["SMTP_MESSAGE_FROM"]
+        self.email_adapter = EmailClient(smtp_info["SMTP_SERVER_HOST"], smtp_info["SMTP_SERVER_PORT"],
+                                         smtp_info["SMTP_SERVER_USER"], smtp_info["SMTP_SERVER_PASS"])
+
+    def send_message(self, receive_str, msg):
+        msg['From'] = '{} conference <{}>'.format(self.community, self.smtp_message_from)
+        return self.email_adapter.send_message(self.smtp_message_from, receive_str, msg)
+
+
 class EmailTemplate:
-    """EmailTemplate"""
+    """Email Template"""
 
     def __init__(self, meeting):
         """meeting must be dict"""
@@ -158,8 +173,8 @@ class CreateMessageEmailAdapterImpl(MessageAdapter):
         # 完善邮件信息
         msg['Subject'] = meeting["topic"]
         msg['To'] = ','.join(email_template.toaddrs_list)
-        email_client = EmailClient(meeting["community"])
-        email_client.send_message(email_template.toaddrs_list, msg.as_string())
+        email_adapter = EmailAdapter(meeting["community"])
+        email_adapter.send_message(email_template.toaddrs_list, msg)
         logger.info(
             '[CreateMessageAdapterImpl/send_message] send create meeting email success: {}/{}/{}'.format(
                 meeting["community"], meeting["platform"], meeting["topic"]))
@@ -186,8 +201,8 @@ class UpdateMessageEmailAdapterImpl(MessageAdapter):
         # 完善邮件信息
         msg['Subject'] = meeting["topic"]
         msg['To'] = ','.join(email_template.toaddrs_list)
-        email_client = EmailClient(meeting["community"])
-        email_client.send_message(email_template.toaddrs_list, msg.as_string())
+        email_adapter = EmailAdapter(meeting["community"])
+        email_adapter.send_message(email_template.toaddrs_list, msg)
         logger.info(
             '[UpdateMessageEmailAdapterImpl/send_message] send update meeting email success: {}/{}/{}'.format(
                 meeting["community"], meeting["platform"], meeting["topic"]))
@@ -214,8 +229,8 @@ class DeleteMessageEmailAdapterImpl(MessageAdapter):
         # 完善邮件信息
         msg['Subject'] = meeting["topic"]
         msg['To'] = ",".join(email_template.toaddrs_list)
-        email_client = EmailClient(meeting["community"])
-        email_client.send_message(email_template.toaddrs_list, msg.as_string())
+        email_adapter = EmailAdapter(meeting["community"])
+        email_adapter.send_message(email_template.toaddrs_list, msg)
         logger.info(
             '[DeleteMessageAdapterImpl/send_message] send cancel email success: {}/{}/{}'.format(meeting["community"],
                                                                                                  meeting["platform"],

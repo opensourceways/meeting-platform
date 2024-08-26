@@ -12,6 +12,7 @@ from django.conf import settings
 
 from meeting.domain.repository.upload_adapter import UploadAdapter
 from meeting_platform.utils.client.obs_client import MyObsClient
+from meeting_platform.utils.common import func_retry
 
 logger = logging.getLogger("log")
 
@@ -67,6 +68,7 @@ class ObsUploadAdapterImpl(UploadAdapter):
         }
         return metadata
 
+    @func_retry()
     def upload(self, video_path, cover_path):
         # 1.upload the video
         video_object = self._get_obs_video_object()

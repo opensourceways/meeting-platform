@@ -10,9 +10,9 @@ from contextlib import suppress
 
 from rest_framework.test import APITestCase
 
-from app_meeting_server.utils.common import get_uuid, refresh_token_and_refresh_token, make_refresh_signature, \
+from meeting_platform.utils.common import get_uuid, refresh_token_and_refresh_token, make_refresh_signature, \
     get_version_params
-from mindspore.models import Meeting, GroupUser, User, Group
+from meeting.models import Meeting
 
 logger = logging.getLogger("log")
 
@@ -49,7 +49,7 @@ class CommonClass:
     def format_token(self, token):
         return "Bearer {}".format(str(token))
 
-    def get_gitee_name(self):
+    def get_openid(self):
         return get_uuid()
 
     def get_group_name(self):
@@ -57,31 +57,31 @@ class CommonClass:
             uid = uuid.uuid4()
             res = str(uid).split('-')[0]
             with suppress(ValueError):
-                if Group.objects.filter(name='U_{}'.format(uid)):
+                if Group.objects.filter(group_name='U_{}'.format(uid)):
                     raise ValueError('Duplicate group')
                 return 'U_{}'.format(res)
             return 'U_{}'.format(res)
 
     def get_group(self, group_name):
-        return Group.objects.get(name=group_name)
+        return Group.objects.get(group_name=group_name)
 
     def create_group(self, group_name):
-        return Group.objects.create(name=group_name, group_type=1)
+        return Group.objects.create(group_name=group_name, )
 
     def create_group_user(self, user_id, group_name):
-        group = Group.objects.filter(name=group_name).first()
+        group = Group.objects.filter(group_name=group_name).first()
         return GroupUser.objects.create(group_id=group.id, user_id=user_id)
 
     def delete_group_user(self, user_id):
         return GroupUser.objects.filter(user_id=user_id).delete()
 
-    def get_user(self, gitee_name):
-        user = User.objects.get(gitee_name=gitee_name)
+    def get_user(self, openid):
+        user = User.objects.get(openid=openid)
         access_token, _ = refresh_token_and_refresh_token(user)
         return access_token, user
 
-    def get_user_by_gitee(self, gitee_name):
-        return User.objects.get(gitee_name=gitee_name)
+    def get_user_by_gitee(self, openid):
+        return User.objects.get(openid=openid)
 
     def update_user_refresh_signature(self, user_id, refresh_token):
         refresh_signature = make_refresh_signature(refresh_token)
@@ -101,28 +101,34 @@ class CommonClass:
     def update_user_maintainer_level(self, user_id):
         User.objects.filter(id=user_id).update(level=2)
 
-    def create_user(self, gitee_name=None):
-        if not gitee_name:
-            gitee_name = self.get_gitee_name()
-        user = User.objects.create(gitee_name=gitee_name)
+    def update_user_activity_admin_level(self, user_id):
+        User.objects.filter(id=user_id).update(activity_level=3)
+
+    def update_user_activity_maintainer_level(self, user_id):
+        User.objects.filter(id=user_id).update(activity_level=2)
+
+    def create_user(self, openid=None):
+        if not openid:
+            openid = self.get_openid()
+        user = User.objects.create(openid=openid)
         access_token, refresh_token = refresh_token_and_refresh_token(user)
         return access_token, refresh_token, user
 
-    def create_maintainer_user(self, gitee_name=None):
-        if not gitee_name:
-            gitee_name = self.get_gitee_name()
+    def create_maintainer_user(self, openid=None):
+        if not openid:
+            openid = self.get_openid()
         user = User.objects.create(
-            gitee_name=gitee_name,
+            openid=openid,
             level=2
         )
         access_token, _ = refresh_token_and_refresh_token(user)
         return access_token, user
 
-    def create_admin_user(self, gitee_name=None):
-        if not gitee_name:
-            gitee_name = self.get_gitee_name()
+    def create_admin_user(self, openid=None):
+        if not openid:
+            openid = self.get_openid()
         user = User.objects.create(
-            gitee_name=gitee_name,
+            openid=openid,
             level=3
         )
         access_token, _ = refresh_token_and_refresh_token(user)

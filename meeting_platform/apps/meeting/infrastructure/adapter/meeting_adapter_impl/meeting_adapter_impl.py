@@ -46,10 +46,12 @@ class MeetingAdapterImpl:
             raise RuntimeError("[MeetingAdapterImpl/get_create_action] invalid platform type")
         return action
 
+    # noinspection SpellCheckingInspection
     def get_update_action(self, platform, meeting):
         if platform.lower() == TencentApi.meeting_type:
             action = TencentUpdateAction(
                 mid=meeting["mid"],
+                mmid=meeting["mmid"],
                 date=meeting["date"],
                 start=meeting["start"],
                 end=meeting["end"],
@@ -115,6 +117,7 @@ class MeetingAdapterImpl:
             raise RuntimeError("[MeetingAdapterImpl/get_participants_action] invalid platform type")
         return action
 
+    # noinspection SpellCheckingInspection
     def get_video_action(self, platform, meeting):
         if platform.lower() == TencentApi.meeting_type:
             action = TencentGetVideo(
