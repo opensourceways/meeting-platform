@@ -7,9 +7,8 @@
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import GenericAPIView
 
-from meeting_platform.utils.middler.my_pagination import MyPagination
-from meeting_platform.utils.middler.my_auth import BasicAuthentication
-from meeting_platform.utils.middler.my_view import MyRetrieveModelMixin, MyListModelMixin
+from meeting_platform.utils.customized.my_pagination import MyPagination
+from meeting_platform.utils.customized.my_view import MyRetrieveModelMixin, MyListModelMixin
 
 from meeting.application.meeting import MeetingApp
 from meeting.controller.serializers.meeting_serializers import MeetingSerializer, \

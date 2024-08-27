@@ -10,9 +10,9 @@ import logging
 
 from django.conf import settings
 
-from meeting.domain.repository.upload_adapter import UploadAdapter
-from meeting_platform.utils.client.obs_client import MyObsClient
 from meeting_platform.utils.common import func_retry
+from meeting.domain.repository.upload_adapter import UploadAdapter
+from meeting.infrastructure.adapter.obs_adapter_impl import ObsAdapterImp
 
 logger = logging.getLogger("log")
 
@@ -21,7 +21,7 @@ class ObsUploadAdapterImpl(UploadAdapter):
     def __init__(self, meeting):
         super(ObsUploadAdapterImpl, self).__init__(meeting)
         obs_info = settings.COMMUNITY_OBS[meeting["community"]]
-        self.obs_client = MyObsClient(obs_info["AK"], obs_info["SK"], obs_info["ENDPOINT"])
+        self.obs_adapter_imp = ObsAdapterImp(obs_info["AK"], obs_info["SK"], obs_info["ENDPOINT"])
         self.endpoint = obs_info["ENDPOINT"]
         self.bucket = obs_info["BUCKET"]
 
@@ -73,27 +73,25 @@ class ObsUploadAdapterImpl(UploadAdapter):
         # 1.upload the video
         video_object = self._get_obs_video_object()
         metadata = self._generate_obs_metadata(video_object, video_path)
-        upload_video_res = self.obs_client.upload_file(self.bucket, video_object, video_path, metadata)
+        upload_video_res = self.obs_adapter_imp.upload_file(self.bucket, video_object, video_path, metadata)
         if upload_video_res.get('status') != 200:
-            logger.error(
-                '[ObsUploadAdapterImpl/upload] meeting {}: fail to upload video to OBS, the reason is {}'.format(
-                    self.meeting["mid"], upload_video_res))
+            logger.error('[ObsUploadAdapterImpl/upload] {}/{}: fail to upload video to OBS, the reason is {}'.
+                         format(self.meeting["community"], self.meeting["mid"], upload_video_res))
             return
         if not isinstance(upload_video_res, dict) or 'status' not in upload_video_res.keys():
-            logger.error(
-                '[ObsUploadAdapterImpl/upload] Unexpected upload video result to OBS: {}'.format(upload_video_res))
+            logger.error('[ObsUploadAdapterImpl/upload] {}/{} Unexpected upload video result to OBS: {}'.
+                         format(self.meeting["community"], self.meeting["mid"], upload_video_res))
             return
         # 2.upload the cover png
-        upload_cover_res = self.obs_client.upload_file(self.bucket,
-                                                       self._get_obs_cover_object(video_object),
-                                                       cover_path)
+        upload_cover_res = self.obs_adapter_imp.upload_file(self.bucket,
+                                                            self._get_obs_cover_object(video_object),
+                                                            cover_path)
         if upload_cover_res.get('status') != 200:
-            logger.error(
-                '[ObsUploadAdapterImpl/upload] meeting {}: fail to upload cover to OBS, the reason is {}'.format(
-                    self.meeting["mid"], upload_cover_res))
+            logger.error('[ObsUploadAdapterImpl/upload] {}/{}: fail to upload cover to OBS, the reason is {}'.
+                         format(self.meeting["community"], self.meeting["mid"], upload_cover_res))
             return
         if not isinstance(upload_cover_res, dict) or 'status' not in upload_cover_res.keys():
-            logger.error(
-                '[ObsUploadAdapterImpl/upload] Unexpected upload cover result to OBS: {}'.format(upload_video_res))
+            logger.error('[ObsUploadAdapterImpl/upload] {}/{} Unexpected upload cover result to OBS: {}'.
+                         format(self.meeting["community"], self.meeting["mid"], upload_video_res))
             return
         return True

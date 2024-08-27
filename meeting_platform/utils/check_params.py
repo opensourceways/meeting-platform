@@ -4,14 +4,12 @@
 # @FileName: check_params.py
 # @Software: PyCharm
 import datetime
-import json
 import re
 import copy
 import logging
 
 from html.parser import HTMLParser
 
-from meeting_platform.utils.common import get_cur_date
 from meeting_platform.utils.ret_api import MyValidationError
 from meeting_platform.utils.ret_code import RetCode
 

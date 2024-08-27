@@ -33,7 +33,6 @@ def my_exception_handler(exc, context):
     if isinstance(exc, AuthenticationFailed):
         msg = RetCode.get_name_by_code(RetCode.STATUS_AUTH_FAILED)
         data = {
-            'detail': msg,
             'msg': msg,
             'code': exc.status_code,
             'data': None
@@ -48,7 +47,6 @@ def my_exception_handler(exc, context):
             headers['Retry-After'] = '%d' % exc.wait
 
         data = {
-            'detail': exc.detail,
             'msg': exc.detail,
             'code': exc.status_code,
             'data': None

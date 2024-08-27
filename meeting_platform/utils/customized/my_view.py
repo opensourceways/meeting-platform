@@ -8,7 +8,7 @@ from rest_framework import mixins
 from rest_framework.generics import RetrieveAPIView, GenericAPIView
 
 from meeting_platform.utils.ret_api import ret_json
-from meeting_platform.utils.middler.my_serializers import EmptySerializers
+from meeting_platform.utils.customized.my_serializers import EmptySerializers
 
 
 class EmptyAPIView:

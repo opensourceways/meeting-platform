@@ -9,7 +9,6 @@ import smtplib
 import traceback
 from logging import getLogger
 
-from django.conf import settings
 
 logger = getLogger("log")
 

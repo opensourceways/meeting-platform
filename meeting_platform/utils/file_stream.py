@@ -24,12 +24,7 @@ def read_content(path):
 
 
 def download_big_file(url, path, headers=None, model="wb"):
-    if headers:
-        r = requests.get(url, headers=headers, stream=True,
-                         timeout=(settings.LINK_TIMEOUT_TIME, settings.READ_TIMEOUT_TIME))
-    else:
-        r = requests.get(url, stream=True,
-                         timeout=(settings.LINK_TIMEOUT_TIME, settings.READ_TIMEOUT_TIME))
+    r = requests.get(url, headers=headers, stream=True, timeout=settings.REQUEST_TIMEOUT)
     flags = os.O_CREAT | os.O_WRONLY
     modes = stat.S_IWUSR | stat.S_IRUSR
     with os.fdopen(os.open(path, flags, modes), model) as f:

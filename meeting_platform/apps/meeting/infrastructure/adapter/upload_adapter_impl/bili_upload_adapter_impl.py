@@ -7,14 +7,12 @@
 import logging
 from meeting.domain.repository.upload_adapter import UploadAdapter
 from meeting.infrastructure.adapter.bilibili_adapter_impl import BiliAdapterImpl
-from meeting.infrastructure.dao.meeting_dao import MeetingDao
 from meeting_platform.utils.common import func_retry
 
 logger = logging.getLogger("log")
 
 
 class BiliUploadAdapterImpl(UploadAdapter):
-    meeting_dao = MeetingDao
 
     def __init__(self, meeting):
         super(BiliUploadAdapterImpl, self).__init__(meeting)
@@ -33,7 +31,6 @@ class BiliUploadAdapterImpl(UploadAdapter):
             return
         b_vid = str(res.get('bvid'))
         replay_url = self.bili_adapter_impl.get_replay_url(b_vid)
-        self.meeting_dao.update_by_id(self.meeting["id"], replay_url=replay_url)
         logger.info('[BiliUploadAdapterImpl/upload]meeting {}: upload to bili successfully, b_vid is {}'.
                     format(self.meeting["mid"], b_vid))
-        return True
+        return replay_url

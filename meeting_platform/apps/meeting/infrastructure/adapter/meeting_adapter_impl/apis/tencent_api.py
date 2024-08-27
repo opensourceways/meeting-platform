@@ -36,21 +36,24 @@ class TencentApi(MeetingAdapter):
 
     def __init__(self, community, platform, host_id):
         platform_info = settings.COMMUNITY_HOST[community][platform]
-        cur_platform_info = [i for i in platform_info if i["HOST"] == host_id]
-        if len(cur_platform_info) == 1:
-            self.app_id = cur_platform_info[0]["TENCENT_APP_ID"]
-            self.sdk_id = cur_platform_info[0]["TENCENT_SDK_ID"]
-            self.secret_id = cur_platform_info[0]["TENCENT_SECRET_ID"]
-            self.secret_key = cur_platform_info[0]["TENCENT_SECRET_KEY"]
-            self.host_key = cur_platform_info[0]["TENCENT_HOST_KEY"]
-            self.host_id = host_id
+        cur_platforms = [i for i in platform_info if i["HOST"] == host_id]
+        if len(cur_platforms) == 1:
+            cur_platform_info = cur_platforms[0]
         else:
-            raise RuntimeError(
-                "[TencentApi] init TencentApi failed, and get config({}) failed.".format(len(cur_platform_info)))
+            raise RuntimeError("[TencentApi] init TencentApi failed, and get config({}) failed."
+                               .format(len(cur_platforms)))
+        self.app_id = cur_platform_info["TENCENT_APP_ID"]
+        self.sdk_id = cur_platform_info["TENCENT_SDK_ID"]
+        self.secret_id = cur_platform_info["TENCENT_SECRET_ID"]
+        self.secret_key = cur_platform_info["TENCENT_SECRET_KEY"]
+        self.host_key = cur_platform_info["TENCENT_HOST_KEY"]
         self.api_prefix = settings.API_PREFIX["TENCENT_API_PREFIX"]
+        self.community = community
+        self.platform = platform
+        self.host_id = host_id
         self.time_out = settings.REQUEST_TIMEOUT
-        self.upload_date = settings.UPLOAD_BILIBILI_DATE
-        self.video_min_size = settings.VIDEO_MINI_SIZE
+        self.bili_upload_date = settings.BILI_UPLOAD_DATE
+        self.bili_video_min_size = settings.BILI_VIDEO_MIN_SIZE
 
     def _get_url(self, uri):
         """request url"""
@@ -186,6 +189,7 @@ class TencentApi(MeetingAdapter):
         logger.info('[TencentApi] Cancel meeting {}'.format(mid))
         return r.status_code
 
+    # noinspection SpellCheckingInspection
     def get_participants(self, action):
         if not isinstance(action, TencentGetParticipantsAction):
             raise RuntimeError("[TencentApi] action must be the subclass of TencentGetParticipantsAction")
@@ -206,7 +210,7 @@ class TencentApi(MeetingAdapter):
     def _get_records(self):
         """get records"""
         end_time = int(time.time())
-        start_time = end_time - 3600 * 24 * self.upload_date
+        start_time = end_time - 3600 * 24 * self.bili_upload_date
         page = 1
         records = []
         while True:
@@ -214,22 +218,24 @@ class TencentApi(MeetingAdapter):
             signature, headers = self._get_signature('GET', uri, "")
             r = requests.get(self._get_url(uri), headers=headers, timeout=self.time_out)
             if r.status_code != 200:
-                logger.error(r.json())
+                logger.error("[TencentApi/_get_records] {}/{} request record failed, and return is:{}."
+                             .format(self.community, self.platform, r.content.decode("utf-8")))
                 return []
             if 'record_meetings' not in r.json().keys():
+                logger.error("[TencentApi/_get_records] {}/{} request record format failed, and return is:{}."
+                             .format(self.community, self.platform, r.content.decode("utf-8")))
                 break
             record_meetings = r.json().get('record_meetings')
             records.extend(record_meetings)
             page += 1
+        records = list(set(records))
         return records
 
+    # noinspection SpellCheckingInspection
     def _filter_records(self, action, recordings):
-        """filter the avaliable record"""
-        mid = action.mid
-        if not recordings:
-            logger.error("[TencentApi] {}: no available recordings".format(mid))
-            return
+        """filter the available record"""
         match_record = dict()
+        mid = action.mid
         mmid = action.mmid
         date = action.date
         start = action.start
@@ -239,13 +245,18 @@ class TencentApi(MeetingAdapter):
             if record.get('meeting_id') != mmid:
                 continue
             if record.get('state') != 3:
+                logger.error("[TencentApi/_filter_records] {}/{} record status is:{} (1 recording/2 transcoding)"
+                             .format(self.community, mid, record.get('state')))
                 continue
             media_start_time = record.get('media_start_time')
             if abs(media_start_time // 1000 - start_timestamp) > 1800:
+                logger.error("[TencentApi/_filter_records] {}/{} record start time({}) gt the start time({}) in set"
+                             .format(self.community, mid, media_start_time, start_timestamp))
                 continue
-            record_file = record.get('record_files')[0]
-            if record_file.get('record_size') < self.video_min_size:
-                logger.error("{}:find the record size lt 10M".format(mid))
+            sorted_data = sorted(record.get('record_size'), key=lambda x: x['record_size'], reverse=True)
+            record_file = sorted_data[0]
+            if record_file.get('record_size') < self.bili_video_min_size:
+                logger.error("[TencentApi/_filter_records] {}/{} find record size lt 10M".format(self.community, mid))
                 continue
             if not match_record:
                 match_record['record_file_id'] = record_file.get('record_file_id')
@@ -256,38 +267,43 @@ class TencentApi(MeetingAdapter):
                 match_record['record_size'] = record_file.get('record_size')
                 match_record['userid'] = record.get('userid')
         if not match_record:
-            logger.error('[TencentApi]Find no recordings about Tencent meeting:{}'.format(mid))
+            logger.error('[TencentApi/_filter_records] {}/{}: Find no recordings about Tencent meeting'.
+                         format(self.community, mid))
             return
         return match_record
 
-    def _get_video_download(self, record_file_id, userid):
-        """get video downlaod url"""
-        uri = self.video_download_path.format(record_file_id, userid)
+    def _get_video_download(self, record_file_id, user_id):
+        """get video download url"""
+        uri = self.video_download_path.format(record_file_id, user_id)
         signature, headers = self._get_signature('GET', uri, "")
         r = requests.get(self._get_url(uri), headers=headers, timeout=self.time_out)
-        if r.status_code == 200:
-            return r.json()['download_address']
-        else:
-            logger.error(r.text)
+        if r.status_code != 200:
+            logger.error('[TencentApi/_filter_records] {}/{}: get video download failed:{}'.
+                         format(self.community, record_file_id, r.content.decode("utf-8")))
             return
+        return r.json().get("download_address")
 
-    def _download_video(self, action, avaliable_record):
+    def _download_video(self, action, available_record):
         """download the video"""
         mid = action.mid
-        download_url = self._get_video_download(avaliable_record.get('record_file_id'), avaliable_record.get('userid'))
+        download_url = self._get_video_download(available_record.get('record_file_id'), available_record.get('userid'))
         if not download_url:
-            logger.error("[TencentApi] get empty download url:{}".format(mid))
+            logger.error("[TencentApi/_download_video] {}/{}: get empty download url".format(self.community, mid))
             return
-        target_filename = get_video_path(mid)
+        target_filename = get_video_path(mid, self.community)
         download_big_file(download_url, target_filename)
         return target_filename
 
     def get_video(self, action):
+        """get video"""
         if not isinstance(action, TencentGetVideo):
-            raise RuntimeError("[TencentApi] action must be the subclass of TencentPrepareVideo")
+            raise RuntimeError("[TencentApi] action must be the subclass of TencentGetVideo")
         recordings = self._get_records()
-        avaliable_record = self._filter_records(action, recordings)
-        if not avaliable_record:
-            logger.info('[TencentApi] filter to no available recordings:{}'.format(action.mid))
+        if not recordings:
+            logger.error("[TencentApi/get_video] {}/{}:find no recordings".format(self.community, action.mid))
             return
-        return self._download_video(action, avaliable_record)
+        available_record = self._filter_records(action, recordings)
+        if not available_record:
+            logger.info('[TencentApi/get_video] {}/{}:filter no available recording'.format(self.community, action.mid))
+            return
+        return self._download_video(action, available_record)

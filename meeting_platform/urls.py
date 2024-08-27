@@ -18,23 +18,22 @@ from rest_framework import permissions
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
 
-from meeting_platform.utils.middler.my_view import PingView
+from meeting_platform.utils.customized.my_view import PingView
 
 urlpatterns = [
     path('ping/', PingView.as_view()),
     path('/api/v1/meeting/', include('meeting.urls.web')),
     path('/inner/v1/meeting/', include('meeting.urls.inner')),
-    path('', include('meeting.urls.inner')),
 
 ]
 
 if settings.DEBUG:
     schema_view = get_schema_view(
         openapi.Info(
-            title='Meeting-Server API',
+            title='Meeting-Platform API',
             default_version='V1',
-            description='Meeting-Server 接口文档',
-            license=openapi.License(name='Apache License'),
+            description='Meeting-Platform 接口文档',
+            license=openapi.License(name='Apache 2.0 License'),
         ),
         public=True,
         permission_classes=[permissions.AllowAny, ]

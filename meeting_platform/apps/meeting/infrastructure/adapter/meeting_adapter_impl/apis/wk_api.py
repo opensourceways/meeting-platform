@@ -22,6 +22,7 @@ from meeting.infrastructure.adapter.meeting_adapter_impl.actions.wk_action impor
 logger = logging.getLogger('log')
 
 
+# noinspection SpellCheckingInspection
 class WkApi(MeetingAdapter):
     meeting_type = "welink"  # it is platform
 
@@ -36,18 +37,21 @@ class WkApi(MeetingAdapter):
 
     def __init__(self, community, platform, host_id):
         platform_info = settings.COMMUNITY_HOST[community][platform]
-        cur_platform_info = [i for i in platform_info if i["HOST"] == host_id]
-        if len(cur_platform_info) == 1:
-            self.account = cur_platform_info[0]["ACCOUNT"]
-            self.pwd = cur_platform_info[0]["PWD"]
-            self.host_id = host_id
+        cur_platforms = [i for i in platform_info if i["HOST"] == host_id]
+        if len(cur_platforms) == 1:
+            cur_platform_info = cur_platforms[0]
         else:
             raise RuntimeError(
-                "[WkApi] init WkApi failed, and get config({}) failed.".format(len(cur_platform_info)))
-
+                "[WkApi] init WkApi failed, and get config({}) failed.".format(len(cur_platforms)))
+        self.account = cur_platform_info["ACCOUNT"]
+        self.pwd = cur_platform_info["PWD"]
         self.api_prefix = settings.API_PREFIX["WELINK_API_PREFIX"]
+        self.host_id = host_id
+        self.community = community
+        self.platform = platform
         self.time_out = settings.REQUEST_TIMEOUT
-        self.upload_date = settings.UPLOAD_BILIBILI_DATE
+        self.bili_upload_date = settings.BILI_UPLOAD_DATE
+        self.bili_video_min_size = settings.BILI_VIDEO_MIN_SIZE
 
     def _get_url(self, uri):
         return self.api_prefix + uri
@@ -238,7 +242,7 @@ class WkApi(MeetingAdapter):
         }
         params = {
             'startDate': tn * 1000,
-            'endDate': (tn - self.upload_date * 3600 * 24) * 1000,
+            'endDate': (tn - self.bili_upload_date * 3600 * 24) * 1000,
             'limit': 100
         }
         response = requests.get(self._get_url(self.list_recordings_path), headers=headers, params=params,
@@ -275,10 +279,12 @@ class WkApi(MeetingAdapter):
         end_time = date + ' ' + end
         status, recordings = self._list_recordings()
         if status != 200:
-            logger.error('[WkApi] {}:Fail to get welink recordings'.format(mid))
+            logger.error('[WkApi/_get_records] {}/{}:Fail to get welink recordings, and return is:{}.'.
+                         format(self.community, mid, status))
             return []
         if recordings['count'] == 0:
-            logger.error('[WkApi] {}:get empty welink recordings'.format(mid))
+            logger.error('[WkApi/_get_records] {}/{}:get empty welink recordings.'
+                         .format(self.community, mid))
             return []
         available_recordings = []
         start_order_set = set()
@@ -312,32 +318,35 @@ class WkApi(MeetingAdapter):
     def _download_video(self, action, recordings):
         """download video"""
         mid = action.mid
-        if not recordings:
-            logger.info('[WkApi] no available recordings:{}'.format(mid))
-            return
         waiting_download_recordings = []
         for available_recording in recordings:
             conf_uuid = available_recording['confUUID']
             status, res = self._get_download_url(conf_uuid)
+            if status != 200:
+                logger.error('[WkApi/_download_video] {}/{}:Fail to get welink recordings, and return is:{}.'.
+                             format(self.community, mid, status))
+                continue
             record_urls = res['recordUrls'][0]['urls']
             for record_url in record_urls:
                 if record_url['fileType'].lower() in ['hd', 'aux']:
                     waiting_download_recordings.append(record_url)
         if not waiting_download_recordings:
-            logger.info('[WkApi] filter to no available recordings:{}'.format(mid))
+            logger.info('[WkApi/_download_video] {}/{} filter to no available recordings'.
+                        format(self.community, mid))
             return
         token = waiting_download_recordings[-1]['token']
         download_url = waiting_download_recordings[-1]['url']
-        target_filename = get_video_path(mid)
+        target_filename = get_video_path(mid, self.community)
         self._download_recording(token, target_filename, download_url)
         return target_filename
 
     def get_video(self, action):
         """download video to local"""
         if not isinstance(action, WkGetVideo):
-            raise RuntimeError("action must be the subclass of TencentPrepareVideo")
+            raise RuntimeError("[WkApi/get_video] action must be the subclass of WkGetVideo")
         recordings = self._get_records(action)
         if not recordings:
-            logger.info('[WkApi] filter to no available recordings which mid is：{}'.format(action.mid))
+            logger.info('[WkApi/get_video] {} filter to no available recordings which mid is：{}'
+                        .format(self.community, action.mid))
             return
         return self._download_video(action, recordings)

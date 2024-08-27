@@ -218,7 +218,7 @@ class DeleteMessageEmailAdapterImpl(MessageAdapter):
                 '[DeleteMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}'.format(
                     meeting["community"], meeting["platform"], meeting["topic"]))
             return
-            # 构造邮件
+        # 构造邮件
         msg = MIMEMultipart()
         # 添加邮件主体
         content = email_template.get_delete_meeting_template_by_meeting_info()

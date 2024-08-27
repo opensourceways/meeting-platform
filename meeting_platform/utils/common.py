@@ -4,6 +4,7 @@
 # @FileName: common.py
 # @Software: PyCharm
 import secrets
+import shutil
 import string
 import subprocess
 import threading
@@ -14,10 +15,8 @@ import os
 import logging
 import traceback
 
-from datetime import datetime, timedelta
+from datetime import datetime
 from functools import wraps
-
-from meeting_platform.utils.file_stream import write_content
 
 logger = logging.getLogger('log')
 
@@ -32,33 +31,25 @@ def get_cur_date():
     return cur_date
 
 
-def gen_new_temp_dir():
-    tmpdir = tempfile.gettempdir()
+def get_temp_dir():
+    return tempfile.gettempdir()
+
+
+def rm_dir(dir_path):
+    if os.path.exists(dir_path):
+        return shutil.rmtree(dir_path)
+
+
+def get_video_path(mid, community):
+    tmpdir = get_temp_dir()
     while True:
         uuid_str = str(uuid.uuid4())
         new_uuid_str = uuid_str.replace("-", "")
-        dir_name = os.path.join(tmpdir, new_uuid_str)
+        dir_name = os.path.join(tmpdir, community, new_uuid_str)
         if not os.path.exists(dir_name):
-            return dir_name
+            os.makedirs(dir_name)
+            break
         time.sleep(1)
-
-
-def make_dir(path):
-    if not os.path.exists(path):
-        os.mkdir(path)
-
-
-def save_temp_img(content):
-    dir_name = gen_new_temp_dir()
-    make_dir(dir_name)
-    tmp_file = os.path.join(dir_name, 'tmp.jpeg')
-    write_content(tmp_file, content)
-    return dir_name, tmp_file
-
-
-def get_video_path(mid):
-    dir_name = gen_new_temp_dir()
-    make_dir(dir_name)
     target_name = mid + '.mp4'
     target_filename = os.path.join(dir_name, target_name)
     return target_filename
@@ -88,20 +79,6 @@ def execute_cmd3(cmd, timeout=30, err_log=False):
         return ret, out, err
     except Exception as e:
         return -1, "", "execute_cmd3 exceeded raise, e={}, trace={}".format(str(e), traceback.format_exc())
-
-
-def get_date_by_start_and_end(start_date_str, end_date_str):
-    all_date_list = list()
-    start_date = datetime.strptime(start_date_str, "%Y-%m-%d")
-    end_date = datetime.strptime(end_date_str, "%Y-%m-%d")
-    date_delta = (end_date - start_date).days
-    if date_delta <= 0:
-        return all_date_list
-    for day in range(0, date_delta + 1):
-        cur_date = start_date + timedelta(days=day)
-        cur_date_str = cur_date.strftime("%Y-%m-%d")
-        all_date_list.append(cur_date_str)
-    return all_date_list
 
 
 def func_retry(tries=3, delay=2):

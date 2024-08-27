@@ -12,7 +12,7 @@ import logging
 
 from django.conf import settings
 
-from meeting_platform.utils.client.obs_client import MyObsClient
+from meeting.infrastructure.adapter.obs_adapter_impl import ObsAdapterImp
 from meeting_platform.utils.common import get_video_path
 from meeting_platform.utils.file_stream import download_big_file
 from meeting.domain.repository.meeting_adapter import MeetingAdapter
@@ -31,22 +31,24 @@ class ZoomApi(MeetingAdapter):
     participants_path = "/v2/past_meetings/{}/participants?page_size=300"
     records_path = "/v2/users/{}/recordings"
 
-    my_obs_client = MyObsClient
+    my_obs_adapter_impl = ObsAdapterImp
 
     def __init__(self, community, platform, host_id):
         platform_info = settings.COMMUNITY_HOST[community][platform]
-        cur_platform_info = [i for i in platform_info if i["HOST"] == host_id]
-        if len(cur_platform_info) == 1:
-            self.account = cur_platform_info[0]["ACCOUNT"]
+        cur_platforms = [i for i in platform_info if i["HOST"] == host_id]
+        if len(cur_platforms) == 1:
+            cur_platform_info = cur_platforms[0]
         else:
-            raise RuntimeError(
-                "[ZoomApi] init ZoomApi failed, and get config({}) failed.".format(len(cur_platform_info)))
+            raise RuntimeError("[ZoomApi] init ZoomApi failed, and get config({}) failed.".format(len(cur_platforms)))
+        self.account = cur_platform_info["ACCOUNT"]
+        self.obs_token = settings.COMMUNITY_ZOOM_OBS[community]
+        self.community = community
+        self.platform = platform
         self.host_id = host_id
         self.api_prefix = settings.API_PREFIX["ZOOM_API_PREFIX"]
         self.time_out = settings.REQUEST_TIMEOUT
-        self.upload_date = settings.UPLOAD_BILIBILI_DATE
-        self.video_min_size = settings.VIDEO_MINI_SIZE
-        self.obs_token = settings.COMMUNITY_ZOOM_OBS[community]
+        self.bili_upload_date = settings.BILI_UPLOAD_DATE
+        self.bili_video_min_size = settings.BILI_VIDEO_MIN_SIZE
 
     def _get_url(self, uri):
         """get url"""
@@ -54,17 +56,17 @@ class ZoomApi(MeetingAdapter):
 
     def _get_oauth_token(self):
         """get oauth token"""
-        obs_client = self.my_obs_client(self.obs_token["AK"], self.obs_token["SK"], self.obs_token["ENDPOINT"])
+        obs_client = self.my_obs_adapter_impl(self.obs_token["AK"], self.obs_token["SK"], self.obs_token["ENDPOINT"])
         res = obs_client.get_object_metadata(self.obs_token["BUCKET"], self.obs_token["OBJECT"])
         token = ''
         if res.get('status') != 200:
-            logger.error('[ZoomApi] Fail to get zoom token')
+            logger.error('[ZoomApi/_get_oauth_token] {}:Fail to get zoom token'.format(self.community))
             return token
         for k, v in res.get('header'):
             if k == 'access_token':
                 token = v
                 break
-        logger.info('[ZoomApi] Get zoom token successfully')
+        logger.info('[ZoomApi/_get_oauth_token] {}:Get zoom token successfully'.format(self.community))
         return token
 
     def create(self, action):
@@ -171,76 +173,69 @@ class ZoomApi(MeetingAdapter):
         """get all records"""
         mid = action.mid
         uri = self.records_path.format(self.host_id)
-        token = self._get_oauth_token()
         headers = {
-            'authorization': 'Bearer {}'.format(token)
+            'authorization': 'Bearer {}'.format(self._get_oauth_token())
         }
         params = {
-            'from': (datetime.datetime.now() -
-                     datetime.timedelta(days=settings.UPLOAD_BILIBILI_DATE)).strftime("%Y-%m-%d"),
+            'from': (datetime.datetime.now() - datetime.timedelta(days=self.bili_upload_date)).strftime("%Y-%m-%d"),
             'page_size': 50
         }
         response = requests.get(self._get_url(uri), headers=headers, params=params, timeout=self.time_out)
         if response.status_code != 200:
-            logger.error('get recordings: {} {}'.format(response.status_code, response.json()['message']))
+            logger.error('[ZoomApi/get_records] {}/{} get recordings failed: {} {}'.
+                         format(self.community, self.platform, response.status_code, response.content.decode("utf-8")))
             return
-        if "meetings" not in response.json():
+        ret_json = response.json()
+        if "meetings" not in ret_json:
+            logger.error('[ZoomApi/get_records] {}/{} get recordings format failed: {} {}'.
+                         format(self.community, self.platform, response.status_code, ret_json.get("message")))
             return
-        all_mid = [x['id'] for x in response.json()['meetings']]
-        if all_mid.count(int(mid)) == 0:
-            logger.info('[ZoomApi] meeting {}: no recordings yet'.format(mid))
+        records = list(filter(lambda x: x if x['id'] == int(mid) else None, ret_json['meetings']))
+        if not records:
+            logger.info('[ZoomApi/get_records] {}/{} meeting {} have no recordings yet'.
+                        format(self.community, self.platform, mid))
             return
-        if all_mid.count(int(mid)) == 1:
-            record = list(filter(lambda x: x if x['id'] == int(mid) else None, response.json()['meetings']))[0]
-            return record
-        if all_mid.count(int(mid)) > 1:
-            records = list(filter(lambda x: x if x['id'] == int(mid) else None, response.json()['meetings']))
-            max_size = max([x['total_size'] for x in records])
-            record = list(filter(lambda x: x if x['total_size'] == max_size else None, response.json()['meetings']))[0]
-            return record
+        sorted_data = sorted(records, key=lambda x: x['total_size'], reverse=True)
+        return sorted_data[0]
 
     def _get_download_url(self, action, recordings):
         """get download url"""
         mid = action.mid
-        if not recordings:
-            logger.error("[ZoomApi] {} find empty records.".format(mid))
-            return
         recordings_list = list(
             filter(lambda x: x if x['file_extension'] == 'MP4' else None, recordings['recording_files']))
         if len(recordings_list) == 0:
-            logger.info('[ZoomApi] {}: filtered records and result is empty'.format(mid))
+            logger.info('[ZoomApi/_get_download_url] {}/{}: file_extension not is mp4 and result is empty'.
+                        format(self.community, mid))
             return
-        if len(recordings_list) > 1:
-            max_size = max([x['file_size'] for x in recordings_list])
-            for recording in recordings_list:
-                if recording['file_size'] != max_size:
-                    recordings_list.remove(recording)
-        total_size = recordings_list[0]['file_size']
-        logger.info('[ZoomApi] meeting {}: the full size of the recording file is {}'.format(mid, total_size))
-        if total_size < settings.VIDEO_MINI_SIZE:
-            logger.info('[ZoomApi] meeting {}: the file is too small to upload'.format(mid))
+        sorted_data = sorted(recordings_list, key=lambda x: x['file_size'], reverse=True)
+        total_size = sorted_data[0]['file_size']
+        logger.info('[ZoomApi/_get_download_url] {}/{}: the full size of the recording file is {}'.
+                    format(self.community, mid, total_size))
+        if total_size < self.bili_video_min_size:
+            logger.info('[ZoomApi/_get_download_url] {}/{} the size of file is lt 1M'.
+                        format(self.community, mid))
             return
-        return recordings_list[0]['download_url']
+        return sorted_data[0]['download_url']
 
     def _download_video(self, action, download_url):
         """download video"""
         mid = action.mid
-        video_path = get_video_path(mid)
+        video_path = get_video_path(mid, self.community)
         r = requests.get(url=download_url, allow_redirects=False, timeout=self.time_out)
         url = r.headers['location']
         filename = download_big_file(url, video_path)
         return filename
 
     def get_video(self, action):
+        """get video"""
         if not isinstance(action, ZoomGetVideo):
-            raise RuntimeError("[ZoomApi] action must be the subclass of ZoomPrepareVideo")
+            raise RuntimeError("[ZoomApi/get_video] action must be the subclass of ZoomGetVideo")
         records = self.get_records(action)
         if not records:
-            logger.error("[ZoomApi] {}: get empty records.".format(action.mid))
+            logger.error("[ZoomApi/get_video] {}/{}: get empty records.".format(self.community, action.mid))
             return
         download_url = self._get_download_url(action, records)
         if not download_url:
-            logger.error("[ZoomApi] {}: get empty download_url.".format(action.mid))
+            logger.error("[ZoomApi/get_video] {}/{}: get empty download_url.".format(self.community, action.mid))
             return
-        video_path = self._download_video(action, download_url)
-        return video_path
+        return self._download_video(action, download_url)

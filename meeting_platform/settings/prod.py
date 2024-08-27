@@ -31,7 +31,6 @@ if CONF["IS_DELETE_CONFIG"]:
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = VAULT_CONF["SECRET_KEY"]
-QUERY_TOKEN = VAULT_CONF["QUERY_TOKEN"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = CONF["DEBUG"]
 
@@ -88,21 +87,18 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'app_meeting_server.utils.my_middleware.MyMiddleware'
+    'meeting_platform.utils.customized.my_middleware.MyMiddleware'
 ]
 
 ROOT_URLCONF = 'meeting_platform.urls'
 
 REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ),
-    'EXCEPTION_HANDLER': 'app_meeting_server.utils.my_exception.my_exception_handler',
-    'DEFAULT_THROTTLE_CLASSES': ['app_meeting_server.utils.my_throttles.MyAnonRateThrottle',
-                                 'app_meeting_server.utils.my_throttles.MyUserRateThrottle'],
+    'EXCEPTION_HANDLER': 'meeting_platform.utils.customized.my_exception.my_exception_handler',
+    'DEFAULT_THROTTLE_CLASSES': ['meeting_platform.utils.customized.my_throttles.MyAnonRateThrottle',
+                                 'meeting_platform.utils.customized.my_throttles.MyUserRateThrottle'],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/s',
-        'user': '200/s'
+        'anon': '10/s',
+        'user': '100/s'
     }
 }
 
@@ -230,7 +226,7 @@ COMMUNITY_BILI = VAULT_CONF["COMMUNITY_BILI"]
 REQUEST_TIMEOUT = (120, 120)
 
 # 上传B站最小视频大小
-BILI_VIDEO_MINI_SIZE = 1024 * 1024 * 10
+BILI_VIDEO_MIN_SIZE = 1024 * 1024 * 10
 # 上传B站的有效时间,单位day
 BILI_UPLOAD_DATE = 7
 

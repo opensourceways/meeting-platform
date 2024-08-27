@@ -4,14 +4,14 @@
 # @Author  : Tom_zc
 # @FileName: inner.py
 # @Software: PyCharm
+from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView
 
-from meeting_platform.utils.middler.my_pagination import MyPagination
-from meeting_platform.utils.middler.my_serializers import MySerializerParse, EmptySerializers
+from meeting_platform.utils.customized.my_pagination import MyPagination
+from meeting_platform.utils.customized.my_serializers import MySerializerParse, EmptySerializers
 from meeting_platform.utils.ret_api import ret_json, capture_my_validation_exception
-from meeting_platform.utils.middler.my_auth import BasicAuthentication
-from meeting_platform.utils.middler.my_view import MyRetrieveModelMixin, MyUpdateAPIView, MyListModelMixin
+from meeting_platform.utils.customized.my_view import MyRetrieveModelMixin, MyUpdateAPIView, MyListModelMixin
 from meeting_platform.utils.operation_log import OperationLogModule, OperationLogDesc, OperationLogType, \
     logger_wrapper, set_log_thread_local, log_key
 
