@@ -70,13 +70,13 @@ class EmailTemplate:
     # noinspection DuplicatedCode
     def get_create_meeting_template_by_meetings_info(self):
         if not self.agenda and not self.record:
-            body = read_content(settings.TEMPLATE_NOT_SUMMARY_NOT_RECORDING)
+            body = read_content(settings.TEMPLATE.get("TEMPLATE_NOT_SUMMARY_NOT_RECORDING"))
         elif self.agenda and not self.record:
-            body = read_content(settings.TEMPLATE_SUMMARY_NOT_RECORDING)
+            body = read_content(settings.TEMPLATE.get("TEMPLATE_SUMMARY_NOT_RECORDING"))
         elif not self.agenda and self.record:
-            body = read_content(settings.TEMPLATE_NOT_SUMMARY_RECORDING)
+            body = read_content(settings.TEMPLATE.get("TEMPLATE_NOT_SUMMARY_RECORDING"))
         elif self.agenda and self.record:
-            body = read_content(settings.TEMPLATE_SUMMARY_RECORDING)
+            body = read_content(settings.TEMPLATE.get("TEMPLATE_SUMMARY_RECORDING"))
         else:
             raise Exception("invalid {}/{}".format(self.agenda, self.record))
         body_of_email = body.replace('{{sig_name}}', '{0}').replace('{{start_time}}', '{1}'). \
@@ -88,7 +88,7 @@ class EmailTemplate:
         return MIMEText(body_of_email, _charset='utf-8')
 
     def get_delete_meeting_template_by_meeting_info(self):
-        body = read_content(settings.TEMPLATE_CANCEL_EMAIL)
+        body = read_content(settings.TEMPLATE.get("TEMPLATE_CANCEL_EMAIL"))
         body_of_email = body.replace('{{platform}}', self.platform). \
             replace('{{start_time}}', self.start_time). \
             replace('{{sig_name}}', self.sig_name)
@@ -158,9 +158,8 @@ class CreateMessageEmailAdapterImpl(MessageAdapter):
     def send_message(self, meeting):
         email_template = EmailTemplate(meeting)
         if not email_template.toaddrs_list:
-            logger.info(
-                '[CreateMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}'.format(
-                    meeting["community"], meeting["platform"], meeting["topic"]))
+            logger.info('[CreateMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}/{}/{}'.format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
             return
         # 构造邮件
         msg = MIMEMultipart()
@@ -175,9 +174,8 @@ class CreateMessageEmailAdapterImpl(MessageAdapter):
         msg['To'] = ','.join(email_template.toaddrs_list)
         email_adapter = EmailAdapter(meeting["community"])
         email_adapter.send_message(email_template.toaddrs_list, msg)
-        logger.info(
-            '[CreateMessageAdapterImpl/send_message] send create meeting email success: {}/{}/{}'.format(
-                meeting["community"], meeting["platform"], meeting["topic"]))
+        logger.info('[CreateMessageAdapterImpl/send_message] send create meeting email success: {}/{}/{}/{}/{}'.format(
+            meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
 
 
 class UpdateMessageEmailAdapterImpl(MessageAdapter):
@@ -186,9 +184,8 @@ class UpdateMessageEmailAdapterImpl(MessageAdapter):
         meeting["topic"] = '[Update] ' + meeting["topic"]
         email_template = EmailTemplate(meeting)
         if not email_template.toaddrs_list:
-            logger.info(
-                '[UpdateMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}'.format(
-                    meeting["community"], meeting["platform"], meeting["topic"]))
+            logger.info('[UpdateMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}/{}/{}'.format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
             return
         # 构造邮件
         msg = MIMEMultipart()
@@ -203,9 +200,8 @@ class UpdateMessageEmailAdapterImpl(MessageAdapter):
         msg['To'] = ','.join(email_template.toaddrs_list)
         email_adapter = EmailAdapter(meeting["community"])
         email_adapter.send_message(email_template.toaddrs_list, msg)
-        logger.info(
-            '[UpdateMessageEmailAdapterImpl/send_message] send update meeting email success: {}/{}/{}'.format(
-                meeting["community"], meeting["platform"], meeting["topic"]))
+        logger.info('[UpdateMessageEmailAdapterImpl/send_message] send update meeting email success: {}/{}/{}/{}/{}'.
+                    format(meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
 
 
 class DeleteMessageEmailAdapterImpl(MessageAdapter):
@@ -214,9 +210,8 @@ class DeleteMessageEmailAdapterImpl(MessageAdapter):
         meeting["topic"] = '[Cancel] ' + meeting["topic"]
         email_template = EmailTemplate(meeting)
         if not email_template.toaddrs_list:
-            logger.info(
-                '[DeleteMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}'.format(
-                    meeting["community"], meeting["platform"], meeting["topic"]))
+            logger.info('[DeleteMessageEmailAdapterImpl/send_message] no email list to send: {}/{}/{}/{}/{}'.format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
             return
         # 构造邮件
         msg = MIMEMultipart()
@@ -231,7 +226,5 @@ class DeleteMessageEmailAdapterImpl(MessageAdapter):
         msg['To'] = ",".join(email_template.toaddrs_list)
         email_adapter = EmailAdapter(meeting["community"])
         email_adapter.send_message(email_template.toaddrs_list, msg)
-        logger.info(
-            '[DeleteMessageAdapterImpl/send_message] send cancel email success: {}/{}/{}'.format(meeting["community"],
-                                                                                                 meeting["platform"],
-                                                                                                 meeting["topic"]))
+        logger.info('[DeleteMessageAdapterImpl/send_message] send cancel email success: {}/{}/{}/{}/{}'.format(
+            meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))

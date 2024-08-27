@@ -28,28 +28,6 @@ def match_crlf(content):
     return crlf_pattern.findall(content)
 
 
-def check_none(value):
-    if not value:
-        logger.error("invalid:{}".format(value))
-        raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-
-
-def check_int(value):
-    try:
-        return int(value)
-    except Exception as e:
-        logger.error("invalid int:{}, and e:{}".format(value, e))
-        raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-
-
-def check_float(value):
-    try:
-        return float(value)
-    except Exception as e:
-        logger.error("invalid float:{}, and e:{}".format(value, e))
-        raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-
-
 def check_link(url):
     if len(url) > 255:
         logger.error("invalid link length:{}".format(len(url)))
@@ -120,10 +98,10 @@ def check_date(date_str):
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
 
-def check_time(time_str, is_meetings=False, is_activity=False):
+def check_time(time_str):
     """
         time_str is 08:00   08 in 08-11 00 in 00-60 and
-        meetings minute is in [0,15,30,45] and activity is in [0,5,10,15,20,25,30,35,40,45,50,55]
+        meetings minute is in [0,15,30,45]
     """
     # time_str is 08:00   08 in 08-11 00 in 00-60
     try:
@@ -136,17 +114,9 @@ def check_time(time_str, is_meetings=False, is_activity=False):
     if hours_int < 8 or hours_int > 22:
         logger.error("hours {} must in 8-22".format(str(hours_int)))
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-    if minute_int < 0 or minute_int > 59:
-        logger.error("minute {} must in 0:59".format(str(hours_int)))
+    if minute_int not in [0, 15, 30, 45]:
+        logger.error("minute {} must in [0, 15, 30, 45]".format(str(minute_int)))
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-    if is_meetings:
-        if minute_int not in [0, 15, 30, 45]:
-            logger.error("minute {} must in [0, 15, 30, 45]".format(str(minute_int)))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
-    elif is_activity:
-        if minute_int not in [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]:
-            logger.error("minute {} must in [0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55]".format(str(minute_int)))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
 
 def check_email_list(email_list_str):
@@ -178,21 +148,3 @@ def check_duration(start, end, date, now_time):
         logger.error('The start time {} should not be later than the end time {}'.format(str(start), str(end)))
         raise MyValidationError(RetCode.STATUS_START_LT_END)
     return err_msg
-
-
-def check_sponsor_name(sponsor_name):
-    # 1.check length
-    check_field(sponsor_name, 60)
-    # 2.check xss
-    new_content = copy.deepcopy(sponsor_name)
-    new_content = new_content.strip()
-    with ParserHandler() as f:
-        f.feed(new_content)
-        if f.result:
-            logger.error("check xss:{}".format(new_content))
-            raise MyValidationError(RetCode.STATUS_START_VALID_XSS)
-    # 3.check \r\n
-    reg = match_crlf(sponsor_name)
-    if reg:
-        logger.error("check crlf")
-        raise MyValidationError(RetCode.STATUS_START_VALID_CRLF)

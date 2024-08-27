@@ -13,9 +13,9 @@ from django.conf import settings
 from django.forms import model_to_dict
 
 from meeting_platform.utils.common import start_thread, get_cur_date
-from meeting_platform.utils.ret_api import MyValidationError, MyInnerError
+from meeting_platform.utils.operation_log import set_log_thread_local, log_key
+from meeting_platform.utils.ret_api import MyValidationError
 from meeting_platform.utils.ret_code import RetCode
-from meeting.infrastructure.adapter.meeting_adapter_impl.apis.base_api import handler_meeting
 from meeting.infrastructure.adapter.meeting_adapter_impl.meeting_adapter_impl import MeetingAdapterImpl
 from meeting.infrastructure.dao import meeting_dao
 from meeting.infrastructure.adapter.message_adapter_impl.email_adapter_impl import CreateMessageEmailAdapterImpl, \
@@ -61,7 +61,7 @@ class MeetingApp:
     def _is_in_prepare_meeting_duration_before_meeting(self, meeting):
         start_date_str = "{} {}".format(meeting["date"], meeting["start"])
         start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
-        if int((start_date - get_cur_date()).total_seconds()) < 30 * 60:
+        if int((start_date - get_cur_date()).total_seconds()) < 60 * 60:
             raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_DELETE)
 
     def _send_message(self, meeting, message_handler):
@@ -72,37 +72,21 @@ class MeetingApp:
             except Exception as e:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
 
-    def _create_meeting(self, host_id, meeting):
-        action = self.meeting_adapter_impl.get_create_action(meeting["platform"], meeting)
-        status, resp = handler_meeting(meeting["community"], meeting["platform"], host_id, action)
-        if status not in [200, 201]:
-            logger.error("[MeetingApp/_create_meeting] {}/{}: Failed to create meeting, and code is {}"
-                         .format(meeting["community"], meeting["platform"], str(status)))
-            raise MyInnerError(RetCode.STATUS_MEETING_FAILED_CREATE)
-        meeting_id = resp.get("mmid")
-        meeting_code = resp.get('mid')
-        meeting_join_url = resp.get('join_url')
-        return meeting_id, meeting_code, meeting_join_url
-
     def create(self, meeting):
         """create meeting"""
+        # check meeting-conflict
         available_host_id = self._get_and_check_conflict_meetings_by_date(meeting)
         meeting["host_id"] = secrets.choice(available_host_id)
-        meeting["mm_id"], meeting["mid"], meeting["join_url"] = self._create_meeting(meeting["host_id"], meeting)
+        # create meeting
+        meeting["mm_id"], meeting["mid"], meeting["join_url"] = self.meeting_adapter_impl.create(meeting["host_id"],
+                                                                                                 meeting)
+        # create in database
         result = self.meeting_dao.create(**meeting)
-        logger.info('[MeetingApp/create] {}/{}: create meeting which mid is {}.'.format(meeting["community"],
-                                                                                        meeting["platform"],
-                                                                                        meeting["mid"]))
+        # send message
         start_thread(self._send_message, (meeting, self.create_message_adapter_impl))
+        logger.info('[MeetingApp/create] {}/{}: create meeting which mid is {} and id is {}.'.
+                    format(meeting["community"], meeting["platform"], meeting["mid"], result))
         return result
-
-    def _update_meeting(self, meeting):
-        action = self.meeting_adapter_impl.get_update_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
-            logger.error('[MeetingApp/_update_meeting] {}/{}: Failed to update meeting {}'
-                         .format(meeting["community"], meeting["platform"], str(status)))
-            raise MyInnerError(RetCode.STATUS_FAILED)
 
     def update(self, meeting_id, meeting_data):
         """update meeting"""
@@ -110,60 +94,43 @@ class MeetingApp:
         if not meeting:
             logger.error('[MeetingApp/update]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
-        meeting_dict = model_to_dict(meeting)
-        meeting_dict.update(meeting_data)
-        meeting_dict.update({"sequence": meeting_dict["sequence"] + 1})
+        meeting = model_to_dict(meeting)
+        meeting.update(meeting_data)
+        meeting.update({"sequence": meeting["sequence"] + 1})
         # check meeting-conflict
-        self._get_and_check_conflict_meetings_by_date(meeting_dict)
-        # not update in the before in start date
-        self._is_in_prepare_meeting_duration_before_meeting(meeting_dict)
+        self._get_and_check_conflict_meetings_by_date(meeting)
+        # check not update in the before in start date
+        self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # update meeting
-        self._update_meeting(meeting_dict)
-        # sendmail
-        start_thread(self._send_message, (meeting_dict, self.update_message_adapter_impl))
-        # update is_delete=1 in database
-        result = self.meeting_dao.update_by_id(meeting_id, **meeting_dict)
-        logger.info('[MeetingApp/create] {}/{}: update meeting which mid is {}.'.format(meeting["community"],
-                                                                                        meeting["platform"],
-                                                                                        meeting["mid"]))
+        self.meeting_adapter_impl.update(meeting)
+        # update in database
+        result = self.meeting_dao.update_by_id(meeting_id, **meeting)
+        # send message
+        start_thread(self._send_message, (meeting, self.update_message_adapter_impl))
+        logger.info('[MeetingApp/update] {}/{}: update meeting which mid is {} and id is {}.'
+                    .format(meeting["community"], meeting["platform"], meeting["mid"], meeting["id"]))
         return result
 
-    def _delete_meeting(self, meeting):
-        action = self.meeting_adapter_impl.get_delete_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
-            logger.error('[MeetingApp/_delete_meeting] {}/{}: Failed to delete meeting {}'
-                         .format(meeting["community"], meeting["platform"], str(status)))
-            raise MyInnerError(RetCode.STATUS_FAILED)
-
-    def delete(self, meeting_id):
+    def delete(self, request, meeting_id):
         """delete meeting"""
         meeting = self.meeting_dao.get_by_id(meeting_id)
         if not meeting:
             logger.error('[MeetingApp/delete]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
+        set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting = model_to_dict(meeting)
         meeting.update({"sequence": meeting["sequence"] + 1})
-        # not delete in the before in start date
+        # check not delete in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # delete meeting
-        self._delete_meeting(meeting)
-        # sendmail
-        start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
+        self.meeting_adapter_impl.delete(meeting)
         # update is_delete=1 in database
         result = self.meeting_dao.delete_by_id(meeting_id)
-        logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {}.'.format(meeting["community"],
-                                                                                        meeting["platform"],
-                                                                                        meeting["mid"]))
+        # send message
+        start_thread(self._send_message, (meeting, self.delete_message_adapter_impl))
+        logger.info('[MeetingApp/delete] {}/{}: delete meeting which mid is {} and id is {}.'
+                    .format(meeting["community"], meeting["platform"], meeting["mid"], meeting_id))
         return result
-
-    def _get_participants(self, meeting):
-        action = self.meeting_adapter_impl.get_participants_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
-            logger.error('[MeetingApp/_get_participants] {}/{}: Failed to get participants {}'
-                         .format(meeting["community"], meeting["platform"], str(status)))
-            raise MyInnerError(RetCode.STATUS_FAILED)
 
     def get_participants(self, meeting_id):
         """get participants"""
@@ -171,4 +138,4 @@ class MeetingApp:
         if not meeting:
             logger.error('[MeetingApp/get_participants]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
-        return self.get_participants(model_to_dict(meeting))
+        return self.meeting_adapter_impl.get_participants(model_to_dict(meeting))

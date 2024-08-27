@@ -10,7 +10,7 @@ from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIVie
 
 from meeting_platform.utils.customized.my_pagination import MyPagination
 from meeting_platform.utils.customized.my_serializers import MySerializerParse, EmptySerializers
-from meeting_platform.utils.ret_api import ret_json, capture_my_validation_exception
+from meeting_platform.utils.ret_api import ret_json, capture_my_validation_exception, MyValidationError
 from meeting_platform.utils.customized.my_view import MyRetrieveModelMixin, MyUpdateAPIView, MyListModelMixin
 from meeting_platform.utils.operation_log import OperationLogModule, OperationLogDesc, OperationLogType, \
     logger_wrapper, set_log_thread_local, log_key
@@ -18,6 +18,7 @@ from meeting_platform.utils.operation_log import OperationLogModule, OperationLo
 from meeting.application.meeting import MeetingApp
 from meeting.controller.serializers.meeting_serializers import MeetingSerializer, \
     SingleMeetingSerializer
+from meeting_platform.utils.ret_code import RetCode
 
 
 class MeetingView(MySerializerParse, MyListModelMixin, CreateAPIView):
@@ -29,16 +30,34 @@ class MeetingView(MySerializerParse, MyListModelMixin, CreateAPIView):
     search_fields = ['community', "mid", "mm_id", "id"]
     pagination_class = MyPagination
     app_class = MeetingApp()
+    order_by = ["date"]
+    order_type = ["asc", "desc"]
 
     @capture_my_validation_exception
     @logger_wrapper(OperationLogModule.OP_MODULE_MEETING, OperationLogType.OP_TYPE_CREATE,
                     OperationLogDesc.OP_DESC_MEETING_CREATE_CODE)
     def create(self, request, *args, **kwargs):
         """create meeting api"""
-        set_log_thread_local(request, log_key, [request.data.get('topic')])
+        set_log_thread_local(request, log_key, [request.data.get('community'), request.data.get('topic')])
         meeting = self.get_my_serializer_data(request)
         data = self.app_class.create(meeting)
         return ret_json(data=data)
+
+    def get_queryset(self):
+        """get the queryset"""
+        order_by = self.request.query_params.get("order_by")
+        if order_by and order_by not in self.order_by:
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if not order_by:
+            order_by = "date"
+        order_type = self.request.query_params.get("order_type")
+        if order_type and order_type not in self.order_type:
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        if not order_type:
+            order_type = "desc"
+        if order_type == "desc":
+            order_by = "-{}".format(order_by)
+        return self.queryset.order_by(order_by, 'start')
 
 
 class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, DestroyAPIView):
@@ -54,7 +73,8 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
                     OperationLogDesc.OP_DESC_MEETING_UPDATE_CODE)
     def update(self, request, *args, **kwargs):
         """update meeting api"""
-        set_log_thread_local(request, log_key, [kwargs.get('id')])
+        set_log_thread_local(request, log_key, [request.data.get('community'),
+                                                request.data.get('topic'), kwargs.get('id')])
         meeting = self.get_my_serializer_data(request)
         data = self.app_class.update(kwargs.get('id'), meeting)
         return ret_json(data=data)
@@ -64,8 +84,8 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
                     OperationLogDesc.OP_DESC_MEETING_DELETE_CODE)
     def destroy(self, request, *args, **kwargs):
         """delete meeting by mid"""
-        set_log_thread_local(request, log_key, [kwargs.get('id')])
-        data = self.app_class.delete(kwargs.get('id'))
+        set_log_thread_local(request, log_key, ["", "", kwargs.get('id')])
+        data = self.app_class.delete(request, kwargs.get('id'))
         return ret_json(data=data)
 
 

@@ -117,35 +117,24 @@ class OperationLogResult(OperationBase):
 class OperationLogDesc(OperationBase):
     # USER CODE START 0
     # MEETING CODE START 1000
-    # Activity CODE START 2000
-    # City CODE START 3000
 
     OP_DESC_MEETING_BASE_CODE = 1000
     OP_DESC_MEETING_CREATE_CODE = OP_DESC_MEETING_BASE_CODE + 1
-    OP_DESC_MEETING_DELETE_CODE = OP_DESC_MEETING_BASE_CODE + 2
-    OP_DESC_MEETING_COLLECT_CODE = OP_DESC_MEETING_BASE_CODE + 3
-    OP_DESC_MEETING_CANCEL_COLLECT_CODE = OP_DESC_MEETING_BASE_CODE + 4
-    OP_DESC_MEETING_MODIFY_CODE = OP_DESC_MEETING_BASE_CODE + 5
-    OP_DESC_MEETING_UPDATE_CODE = OP_DESC_MEETING_BASE_CODE + 6
+    OP_DESC_MEETING_UPDATE_CODE = OP_DESC_MEETING_BASE_CODE + 2
+    OP_DESC_MEETING_DELETE_CODE = OP_DESC_MEETING_BASE_CODE + 3
 
     CN_OPERATION = {
         # meeting
-        OP_DESC_MEETING_CREATE_CODE: "创建会议（%s）。",
-        OP_DESC_MEETING_UPDATE_CODE: "修改会议（%s）。",
-        OP_DESC_MEETING_DELETE_CODE: "删除会议（%s）。",
-        OP_DESC_MEETING_COLLECT_CODE: "收藏会议（%s）。",
-        OP_DESC_MEETING_CANCEL_COLLECT_CODE: "取消收藏会议（%s）。",
-        OP_DESC_MEETING_MODIFY_CODE: "修改会议（%s）。",
+        OP_DESC_MEETING_CREATE_CODE: "创建会议（%s/%s）。",
+        OP_DESC_MEETING_UPDATE_CODE: "修改会议（%s/%s/%s）。",
+        OP_DESC_MEETING_DELETE_CODE: "删除会议（%s/%s/%s）。",
     }
 
     EN_OPERATION = {
         # meeting
-        OP_DESC_MEETING_CREATE_CODE: "Create meeting(%s).",
-        OP_DESC_MEETING_UPDATE_CODE: "Update meeting(%s).",
-        OP_DESC_MEETING_DELETE_CODE: "Delete meeting(%s).",
-        OP_DESC_MEETING_COLLECT_CODE: "Collect meeting(%s).",
-        OP_DESC_MEETING_CANCEL_COLLECT_CODE: "Cancel to collect meeting(%s).",
-        OP_DESC_MEETING_MODIFY_CODE: "Modify meeting(%s).",
+        OP_DESC_MEETING_CREATE_CODE: "Create meeting(%s/%s).",
+        OP_DESC_MEETING_UPDATE_CODE: "Update meeting(%s/%s/%s).",
+        OP_DESC_MEETING_DELETE_CODE: "Delete meeting(%s/%s/%s).",
 
     }
 

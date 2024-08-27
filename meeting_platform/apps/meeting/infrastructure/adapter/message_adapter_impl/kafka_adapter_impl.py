@@ -32,7 +32,8 @@ class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:
-            logger.info("[CreateMessageAdapterImpl] kafka config is empty, Please ignore.")
+            logger.info("[CreateMessageAdapterImpl] {} kafka config is empty, Please ignore."
+                        .format(meeting["community"]))
             return
         with KafKaClient(settings.KAFKA_CLIENT) as client:
             data = {
@@ -40,7 +41,8 @@ class CreateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
                 "msg": meeting
             }
             client.send_msg(settings.KAFKA_TOPIC, data)
-            logger.info("[CreateMessageAdapterImpl] send create kafka msg success")
+            logger.info("[CreateMessageAdapterImpl] {}/{}/{}/{}/{} send create kafka msg success".format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
 
 
 class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
@@ -49,7 +51,8 @@ class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:
-            logger.info("[UpdateMessageKafKaAdapterImpl] kafka config is empty, Please ignore.")
+            logger.info("[UpdateMessageKafKaAdapterImpl] {} kafka config is empty, Please ignore."
+                        .format(meeting["community"]))
             return
         with KafKaClient(settings.KAFKA_CLIENT) as client:
             data = {
@@ -57,7 +60,8 @@ class UpdateMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
                 "msg": meeting
             }
             client.send_msg(settings.KAFKA_TOPIC, data)
-            logger.info("[UpdateMessageKafKaAdapterImpl] send update kafka msg success")
+            logger.info("[UpdateMessageKafKaAdapterImpl] {}/{}/{}/{}/{} send update kafka msg success".format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
 
 
 class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
@@ -66,7 +70,8 @@ class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
     def send_message(self, meeting):
         kafka_topic, kafka_client = self.get_client(meeting)
         if not kafka_topic or not kafka_client:
-            logger.info("[DeleteMessageKafKaAdapterImpl] kafka config is empty, Please ignore.")
+            logger.info("[DeleteMessageKafKaAdapterImpl] {} kafka config is empty, Please ignore."
+                        .format(meeting["community"]))
             return
         with KafKaClient(settings.KAFKA_CLIENT) as client:
             data = {
@@ -74,4 +79,5 @@ class DeleteMessageKafKaAdapterImpl(MessageKafKaAdapterImpl):
                 "msg": meeting
             }
             client.send_msg(settings.KAFKA_TOPIC, data)
-            logger.info("[DeleteMessageAdapterImpl] send delete kafka msg success")
+            logger.info("[UpdateMessageKafKaAdapterImpl] {}/{}/{}/{}/{} send delete kafka msg success".format(
+                meeting["community"], meeting["platform"], meeting["topic"], meeting["mid"], meeting["id"]))
