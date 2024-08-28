@@ -22,7 +22,7 @@ from meeting_platform.utils.customized.my_view import PingView
 
 urlpatterns = [
     path('ping/', PingView.as_view()),
-    path('/inner/v1/meeting/', include('meeting.urls.inner')),
+    path('inner/v1/meeting/', include('meeting.urls.inner')),
 ]
 
 if settings.DEBUG:

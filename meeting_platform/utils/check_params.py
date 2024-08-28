@@ -28,16 +28,20 @@ def match_crlf(content):
     return crlf_pattern.findall(content)
 
 
+def match_url(url_str):
+    return url_pattern.findall(url_str)
+
+
 def check_link(url):
     if len(url) > 255:
         logger.error("invalid link length:{}".format(len(url)))
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
     if not isinstance(url, str):
-        logger.error('Invalid link: {}'.format(url))
+        logger.error('Invalid link str: {}'.format(url))
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
     url = url.lower()
-    if not url or not url.startswith('https://') or "redirect" in url or not url_pattern.findall(url):
-        logger.error('Invalid link: {}'.format(url))
+    if not url or not url.startswith('https://') or "redirect" in url or not match_url:
+        logger.error('Invalid link format: {}'.format(url))
         raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
 
 
@@ -72,7 +76,7 @@ def check_invalid_content(content, check_crlf=True):
             logger.error("check xss:{}".format(new_content))
             raise MyValidationError(RetCode.STATUS_START_VALID_XSS)
     # 2.check url
-    reg = check_link(content)
+    reg = match_url(content)
     if reg:
         logger.error("check invalid url:{}".format(",".join(reg)))
         raise MyValidationError(RetCode.STATUS_START_VALID_URL)

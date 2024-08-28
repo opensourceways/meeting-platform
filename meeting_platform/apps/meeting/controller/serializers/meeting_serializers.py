@@ -34,7 +34,7 @@ class MeetingSerializer(ModelSerializer):
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'mm_id', 'is_record', 'upload_status',
-                  'join_url', 'replay_url', 'create_time', 'update_time']
+                  'join_url', 'replay_url', 'create_time', 'update_time', 'duration', 'duration_time']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'required': True},
@@ -77,6 +77,7 @@ class MeetingSerializer(ModelSerializer):
         if value not in settings.COMMUNITY_SUPPORT:
             logger.error("community {} is not exist in COMMUNITY_SUPPORT".format(value))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return value
 
     def validate_topic(self, value):
         """check length of 128，not include \r\n url xss"""
@@ -86,9 +87,6 @@ class MeetingSerializer(ModelSerializer):
 
     def validate_platform(self, value):
         """check platform"""
-        if value.lower() not in settings.COMMUNITY_HOST.keys():
-            logger.error('platform {} is not exist in COMMUNITY_HOST.'.format(value))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         return value
 
     def validate_date(self, value):
@@ -138,6 +136,10 @@ class MeetingSerializer(ModelSerializer):
             logger.error("invalid etherpad:{}".format(etherpad))
             raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
+        if attrs["platform"] not in settings.COMMUNITY_HOST[attrs["community"]].keys():
+            logger.error('platform {} is not exist in COMMUNITY_HOST.'.format(attrs["platform"]))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        return attrs
 
     def get_duration(self, obj):
         """get duration"""
@@ -158,7 +160,7 @@ class SingleMeetingSerializer(ModelSerializer):
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
                   'agenda', 'etherpad', 'email_list', 'mid', 'mm_id', 'is_record', 'upload_status',
-                  'join_url', 'replay_url', 'create_time', 'update_time']
+                  'join_url', 'replay_url', 'create_time', 'update_time', 'duration', 'duration_time']
         extra_kwargs = {
             'id': {'read_only': True},
             'sponsor': {'read_only': True},

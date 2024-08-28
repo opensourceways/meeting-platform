@@ -39,7 +39,7 @@ def handler_meeting(community, platform, host_id, action):
         if mod_name == "base_api":
             continue
         mod = importlib.import_module(".apis.{}".format(mod_name),
-                                      package="app_meeting_server.apps.meeting.infrastructure.adapter."
+                                      package="meeting_platform.apps.meeting.infrastructure.adapter."
                                               "meeting_adapter_impl")
         for _, cls in mod.__dict__.items():
             if not inspect.isclass(cls):

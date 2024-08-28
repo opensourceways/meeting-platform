@@ -6,7 +6,7 @@
 # @Software: PyCharm
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
-from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView
+from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView, ListAPIView, RetrieveAPIView
 
 from meeting_platform.utils.customized.my_pagination import MyPagination
 from meeting_platform.utils.customized.my_serializers import MySerializerParse, EmptySerializers
@@ -21,7 +21,7 @@ from meeting.controller.serializers.meeting_serializers import MeetingSerializer
 from meeting_platform.utils.ret_code import RetCode
 
 
-class MeetingView(MySerializerParse, MyListModelMixin, CreateAPIView):
+class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIView):
     """create or list meeting"""
     serializer_class = MeetingSerializer
     authentication_classes = (BasicAuthentication,)
@@ -60,7 +60,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, CreateAPIView):
         return self.queryset.order_by(order_by, 'start')
 
 
-class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, DestroyAPIView):
+class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView, RetrieveAPIView, DestroyAPIView):
     """get or update or delete meeting"""
     lookup_field = "id"
     serializer_class = SingleMeetingSerializer

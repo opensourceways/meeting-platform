@@ -16,7 +16,7 @@ class WkCreateAction(CreateAction):
     start: str
     end: str
     topic: str
-    is_record: str
+    is_record: bool
 
 
 @dataclass
@@ -26,7 +26,7 @@ class WkUpdateAction(UpdateAction):
     start: str
     end: str
     topic: str
-    is_record: str
+    is_record: bool
 
 
 @dataclass

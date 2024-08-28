@@ -65,7 +65,7 @@ class EmailTemplate:
         self.portal_en = portal_info["PORTAL_EN"]
         self.community = meeting["community"]
         self.mid = meeting["mid"]
-        self.sequence = meeting["sequence"]
+        self.sequence = meeting.get("sequence") or 0
 
     # noinspection DuplicatedCode
     def get_create_meeting_template_by_meetings_info(self):

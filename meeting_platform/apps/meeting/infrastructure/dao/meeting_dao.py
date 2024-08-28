@@ -7,43 +7,44 @@
 from meeting.models import Meeting
 
 
-class MeetingDao(Meeting):
+class MeetingDao:
+    dao = Meeting
 
     @classmethod
     def get_conflict_meeting(cls, community, platform, date, start_search, end_search):
-        return cls.objects.filter(community=community, platform=platform, is_delete=0,
-                                  date=date, end__gt=start_search, start__lt=end_search)
+        return cls.dao.objects.filter(community=community, platform=platform, is_delete=0,
+                                      date=date, end__gt=start_search, start__lt=end_search)
 
     @classmethod
     def get_queryset(cls):
-        return cls.objects.filter(is_delete=0)
+        return cls.dao.objects.filter(is_delete=0)
 
     @classmethod
     def create(cls, **kwargs):
-        return cls.objects.create(**kwargs)
+        return cls.dao.objects.create(**kwargs)
 
     @classmethod
     def get_by_id(cls, meeting_id):
-        return cls.objects.filter(id=meeting_id, is_delete=0).first()
+        return cls.dao.objects.filter(id=meeting_id, is_delete=0).first()
 
     @classmethod
     def update_by_id(cls, meeting_id, **kwargs):
-        return cls.objects.filter(id=meeting_id, is_delete=0).update(**kwargs)
+        return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(**kwargs)
 
     @classmethod
     def delete_by_id(cls, meeting_id):
-        return cls.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1)
+        return cls.dao.objects.filter(id=meeting_id, is_delete=0).update(is_delete=1)
 
     @classmethod
     def get_uploaded_mid_by_community_and_status(cls, community, status):
-        return cls.objects.filter(is_delete=0, community=community, is_record=1, upload_status=status) \
+        return cls.dao.objects.filter(is_delete=0, community=community, is_record=True, upload_status=status) \
             .values_list('mid', flat=True)
 
     @classmethod
     def update_upload_status_by_community_and_mid(cls, community, mid, status):
-        return cls.objects.filter(is_delete=0, community=community, is_record=1).filter(mid__in=mid). \
+        return cls.dao.objects.filter(is_delete=0, community=community, is_record=True).filter(mid__in=mid). \
             update(upload_status=status)
 
     @classmethod
     def get_upload_all_by_community_and_status(cls, community, status):
-        return cls.objects.filter(is_delete=0, community=community, is_record=1, upload_status=status).all()
+        return cls.dao.objects.filter(is_delete=0, community=community, is_record=True, upload_status=status).all()

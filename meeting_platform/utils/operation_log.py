@@ -195,15 +195,17 @@ def logger_wrapper(log_module, log_type, log_desc):
         def inner(view, request, *args, **kwargs):
             with LoggerContext(request, log_module, log_type, log_desc) as log_context:
                 log_context.log_vars = ["anonymous"]
-                resp = fn(view, request, *args, **kwargs)
-                log_context.request.user = request.user
-                log_vars = get_log_thread_local(request, log_key)
-                if log_vars:
-                    log_context.log_vars = log_vars
-                else:
-                    log_context.log_vars = [request.user.id]
-                log_context.result = resp
-                return resp
+                try:
+                    resp = fn(view, request, *args, **kwargs)
+                    log_context.result = resp
+                    return resp
+                finally:
+                    log_context.request.user = request.user
+                    log_vars = get_log_thread_local(request, log_key)
+                    if log_vars:
+                        log_context.log_vars = log_vars
+                    else:
+                        log_context.log_vars = [request.user.id]
 
         return inner
 

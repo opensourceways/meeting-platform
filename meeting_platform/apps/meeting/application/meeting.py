@@ -49,7 +49,7 @@ class MeetingApp:
         meetings = self.meeting_dao.get_conflict_meeting(community, platform, date,
                                                          start_search, end_search).values()
         unavailable_host_ids = [meeting['host_id'] for meeting in meetings]
-        host_info = settings.COMMUNITY_HOST[meeting["community"]]["platform"]
+        host_info = settings.COMMUNITY_HOST[meeting["community"]][meeting["platform"]]
         host_list = [key["HOST"] for key in host_info]
         available_host_id = list(set(host_list) - set(unavailable_host_ids))
         if len(available_host_id) == 0:
@@ -68,7 +68,7 @@ class MeetingApp:
         """send the message"""
         for handler in message_handler:
             try:
-                handler.send_message(meeting)
+                handler().send_message(meeting)
             except Exception as e:
                 logger.error("[MeetingApp/_send_message] err:{}, and traceback:{}".format(e, traceback.format_exc()))
 
@@ -82,11 +82,12 @@ class MeetingApp:
                                                                                                  meeting)
         # create in database
         result = self.meeting_dao.create(**meeting)
+        meeting["id"] = result.id
         # send message
         start_thread(self._send_message, (meeting, self.create_message_adapter_impl))
         logger.info('[MeetingApp/create] {}/{}: create meeting which mid is {} and id is {}.'.
                     format(meeting["community"], meeting["platform"], meeting["mid"], result))
-        return result
+        return meeting["id"]
 
     def update(self, meeting_id, meeting_data):
         """update meeting"""
@@ -117,8 +118,8 @@ class MeetingApp:
         if not meeting:
             logger.error('[MeetingApp/delete]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
-        set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting = model_to_dict(meeting)
+        set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting.update({"sequence": meeting["sequence"] + 1})
         # check not delete in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)

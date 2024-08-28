@@ -26,7 +26,7 @@ class ZoomUpdateAction(UpdateAction):
     start: str
     end: str
     topic: str
-    is_record: str
+    is_record: bool
 
 
 @dataclass
