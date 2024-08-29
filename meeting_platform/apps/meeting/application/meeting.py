@@ -78,7 +78,7 @@ class MeetingApp:
         available_host_id = self._get_and_check_conflict_meetings_by_date(meeting)
         meeting["host_id"] = secrets.choice(available_host_id)
         # create meeting
-        meeting["mm_id"], meeting["mid"], meeting["join_url"] = self.meeting_adapter_impl.create(meeting["host_id"],
+        meeting["mid"], meeting["m_mid"], meeting["join_url"] = self.meeting_adapter_impl.create(meeting["host_id"],
                                                                                                  meeting)
         # create in database
         result = self.meeting_dao.create(**meeting)
@@ -89,13 +89,14 @@ class MeetingApp:
                     format(meeting["community"], meeting["platform"], meeting["mid"], result))
         return meeting["id"]
 
-    def update(self, meeting_id, meeting_data):
+    def update(self, request, meeting_id, meeting_data):
         """update meeting"""
         meeting = self.meeting_dao.get_by_id(meeting_id)
         if not meeting:
             logger.error('[MeetingApp/update]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
+        set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting.update(meeting_data)
         meeting.update({"sequence": meeting["sequence"] + 1})
         # check meeting-conflict

@@ -33,7 +33,7 @@ class MeetingSerializer(ModelSerializer):
         """Meta Meta"""
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
-                  'agenda', 'etherpad', 'email_list', 'mid', 'mm_id', 'is_record', 'upload_status',
+                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'upload_status',
                   'join_url', 'replay_url', 'create_time', 'update_time', 'duration', 'duration_time']
         extra_kwargs = {
             'id': {'read_only': True},
@@ -50,7 +50,7 @@ class MeetingSerializer(ModelSerializer):
             'email_list': {'required': False},
             'is_record': {'required': True},
             'mid': {'read_only': True},
-            'mm_id': {'read_only': True},
+            'm_mid': {'read_only': True},
             'upload_status': {'read_only': True},
             'join_url': {'read_only': True},
             'replay_url': {'read_only': True},
@@ -159,7 +159,7 @@ class SingleMeetingSerializer(ModelSerializer):
         """Meta Meta"""
         model = Meeting
         fields = ['id', 'sponsor', 'group_name', 'community', 'topic', 'platform', 'date', 'start', 'end',
-                  'agenda', 'etherpad', 'email_list', 'mid', 'mm_id', 'is_record', 'upload_status',
+                  'agenda', 'etherpad', 'email_list', 'mid', 'm_mid', 'is_record', 'upload_status',
                   'join_url', 'replay_url', 'create_time', 'update_time', 'duration', 'duration_time']
         extra_kwargs = {
             'id': {'read_only': True},
@@ -176,7 +176,7 @@ class SingleMeetingSerializer(ModelSerializer):
             'is_record': {'required': False},
             'email_list': {'read_only': True},
             'mid': {'read_only': True},
-            'mm_id': {'read_only': True},
+            'm_mid': {'read_only': True},
             'upload_status': {'read_only': True},
             'join_url': {'read_only': True},
             'replay_url': {'read_only': True},

@@ -61,7 +61,7 @@ class MeetingAction:
         if platform.lower() == TencentApi.meeting_type:
             action = TencentUpdateAction(
                 mid=meeting["mid"],
-                mmid=meeting["mmid"],
+                m_mid=meeting["m_mid"],
                 date=meeting["date"],
                 start=meeting["start"],
                 end=meeting["end"],
@@ -95,7 +95,7 @@ class MeetingAction:
         if platform.lower() == TencentApi.meeting_type:
             action = TencentDeleteAction(
                 mid=meeting["mid"],
-                mmid=meeting["mm_id"],
+                m_mid=meeting["m_mid"],
             )
         elif platform.lower() == WkApi.meeting_type:
             action = WkDeleteAction(
@@ -113,7 +113,7 @@ class MeetingAction:
     def get_participants_action(platform, meeting):
         if platform.lower() == TencentApi.meeting_type:
             action = TencentGetParticipantsAction(
-                mmid=meeting["mm_id"],
+                m_mid=meeting["m_mid"],
             )
         elif platform.lower() == WkApi.meeting_type:
             action = WkGetParticipantsAction(
@@ -135,7 +135,7 @@ class MeetingAction:
         if platform.lower() == TencentApi.meeting_type:
             action = TencentGetVideo(
                 mid=meeting["mid"],
-                mmid=meeting["mmid"],
+                m_mid=meeting["m_mid"],
                 date=meeting["date"],
                 start=meeting["start"]
             )
@@ -156,23 +156,22 @@ class MeetingAction:
 class MeetingAdapterImpl(MeetingAdapter):
     meeting_action = MeetingAction
 
-    # noinspection SpellCheckingInspection
     def create(self, host_id, meeting):
         action = self.meeting_action.get_create_action(meeting["platform"], meeting)
         status, resp = handler_meeting(meeting["community"], meeting["platform"], host_id, action)
-        if status not in [200, 201]:
+        if not str(status).startswith("20"):
             logger.error("[MeetingAdapterImpl/create] {}/{}: Failed to create meeting, and code is {}"
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_MEETING_FAILED_CREATE)
-        meeting_id = resp.get("mmid")
-        meeting_code = resp.get('mid')
+        meeting_id = resp.get('mid')
+        meeting_mid = resp.get("m_mid")
         meeting_join_url = resp.get('join_url')
-        return meeting_id, meeting_code, meeting_join_url
+        return meeting_id, meeting_mid, meeting_join_url
 
     def update(self, meeting):
         action = self.meeting_action.get_update_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
+        if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/update] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_FAILED)
@@ -180,7 +179,7 @@ class MeetingAdapterImpl(MeetingAdapter):
     def delete(self, meeting):
         action = self.meeting_action.get_delete_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
+        if not str(status).startswith("20") and status != 404:
             logger.error('[MeetingAdapterImpl/delete] {}/{}: Failed to delete meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_FAILED)
@@ -188,7 +187,7 @@ class MeetingAdapterImpl(MeetingAdapter):
     def get_participants(self, meeting):
         action = self.meeting_action.get_participants_action(meeting["platform"], meeting)
         status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
-        if status != 200:
+        if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/get_participants] {}/{}: Failed to get participants {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
             raise MyInnerError(RetCode.STATUS_FAILED)

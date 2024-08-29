@@ -19,11 +19,10 @@ class TencentCreateAction(CreateAction):
     is_record: bool
 
 
-# noinspection SpellCheckingInspection
 @dataclass
 class TencentUpdateAction(UpdateAction):
     mid: str
-    mmid: str
+    m_mid: str
     date: str
     start: str
     end: str
@@ -31,23 +30,20 @@ class TencentUpdateAction(UpdateAction):
     is_record: bool
 
 
-# noinspection SpellCheckingInspection
 @dataclass
 class TencentDeleteAction(DeleteAction):
     mid: str
-    mmid: str
+    m_mid: str
 
 
-# noinspection SpellCheckingInspection
 @dataclass
 class TencentGetParticipantsAction(GetParticipantsAction):
-    mmid: str
+    m_mid: str
 
 
-# noinspection SpellCheckingInspection
 @dataclass
 class TencentGetVideo(GetVideoAction):
     mid: str
-    mmid: str
+    m_mid: str
     date: str
     start: str

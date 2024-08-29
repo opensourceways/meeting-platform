@@ -37,7 +37,7 @@ class Meeting(models.Model):
     email_list = models.TextField(verbose_name='邮件列表', null=True, blank=True)
     host_id = models.EmailField(verbose_name='会议host_id', null=True, blank=True)
     mid = models.CharField(verbose_name='会议id', max_length=32)
-    mm_id = models.CharField(verbose_name='腾讯会议id', max_length=32, null=True, blank=True)
+    m_mid = models.CharField(verbose_name='腾讯会议id', max_length=32, null=True, blank=True)
     join_url = models.CharField(verbose_name='进入会议url', max_length=128, null=True, blank=True)
     is_record = models.BooleanField(verbose_name="是否录制", default=False)
     upload_status = models.SmallIntegerField(verbose_name="上传状态", choices=UploadStatus.to_tuple(), default=0)

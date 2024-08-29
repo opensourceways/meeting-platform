@@ -148,6 +148,9 @@ class WkApi(MeetingAdapter):
         if action.is_record:
             data['isAutoRecord'] = 1
             data['recordType'] = 2
+        else:
+            data['isAutoRecord'] = 0
+            data['recordType'] = 0
         response = requests.put(self._get_url(self.update_path), params=params, headers=headers, data=json.dumps(data),
                                 timeout=self.time_out)
         return response.status_code

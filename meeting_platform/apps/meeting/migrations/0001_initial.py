@@ -32,7 +32,7 @@ class Migration(migrations.Migration):
                 ('email_list', models.TextField(blank=True, null=True, verbose_name='邮件列表')),
                 ('host_id', models.EmailField(blank=True, max_length=254, null=True, verbose_name='会议host_id')),
                 ('mid', models.CharField(max_length=32, verbose_name='会议id')),
-                ('mm_id', models.CharField(blank=True, max_length=32, null=True, verbose_name='腾讯会议id')),
+                ('m_mid', models.CharField(blank=True, max_length=32, null=True, verbose_name='腾讯会议id')),
                 ('join_url', models.CharField(blank=True, max_length=128, null=True, verbose_name='进入会议url')),
                 ('is_record', models.SmallIntegerField(choices=[(0, '否'), (1, '是')], default=0, verbose_name='是否录制')),
                 ('upload_status', models.SmallIntegerField(choices=[(0, '初始化'), (1, '已经上传OBS'), (2, '已经上传BILI'), (10, '全部已经上传完成')], default=0, verbose_name='上传状态')),

@@ -27,7 +27,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
     authentication_classes = (BasicAuthentication,)
     queryset = MeetingApp.meeting_dao.get_queryset()
     filter_backends = [SearchFilter]
-    search_fields = ['community', "mid", "mm_id", "id"]
+    search_fields = ['community', "mid", "id"]
     pagination_class = MyPagination
     app_class = MeetingApp()
     order_by = ["date"]
@@ -76,7 +76,7 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
         set_log_thread_local(request, log_key, [request.data.get('community'),
                                                 request.data.get('topic'), kwargs.get('id')])
         meeting = self.get_my_serializer_data(request)
-        data = self.app_class.update(kwargs.get('id'), meeting)
+        data = self.app_class.update(request, kwargs.get('id'), meeting)
         return ret_json(data=data)
 
     @capture_my_validation_exception

@@ -84,6 +84,10 @@ class ZoomApi(MeetingAdapter):
             "content-type": "application/json",
             "authorization": "Bearer {}".format(token)
         }
+        if action.is_record:
+            auto_recording = "cloud"
+        else:
+            auto_recording = "none"
         payload = {
             'start_time': start_time,
             'duration': duration,
@@ -91,7 +95,7 @@ class ZoomApi(MeetingAdapter):
             'password': secrets.token_hex(3),
             'settings': {
                 'waiting_room': False,
-                'auto_recording': action.is_record,
+                'auto_recording': auto_recording,
                 'join_before_host': True,
                 'jbh_time': 5
             }
@@ -115,7 +119,6 @@ class ZoomApi(MeetingAdapter):
         start = action.start
         end = action.end
         date = action.date
-        # 计算duration
         if int(start.split(':')[0]) >= 8:
             start_time = date + 'T' + ':'.join([str(int(start.split(':')[0]) - 8), start.split(':')[1], '00Z'])
         else:
@@ -124,17 +127,25 @@ class ZoomApi(MeetingAdapter):
             start_time = d2 + 'T' + ':'.join([str(int(start.split(':')[0]) + 16), start.split(':')[1], '00Z'])
         duration = (int(end.split(':')[0]) - int(start.split(':')[0])) * 60 + \
                    (int(end.split(':')[1]) - int(start.split(':')[1]))
-        # 准备好调用zoom api的data
-        new_data = {'settings': {}, 'start_time': start_time, 'duration': duration, 'topic': action.topic}
-        new_data['settings']['waiting_room'] = False
-        new_data['settings']['auto_recording'] = action.is_record
+        if action.is_record:
+            auto_recording = "cloud"
+        else:
+            auto_recording = "none"
+        new_data = {
+            'start_time': start_time,
+            'duration': duration,
+            'topic': action.topic,
+            'settings': {
+                'waiting_room': False,
+                'auto_recording': auto_recording,
+            }
+        }
         token = self._get_oauth_token()
         headers = {
             "content-type": "application/json",
             "authorization": "Bearer {}".format(token)
         }
         uri = self.update_path.format(action.mid)
-        # 发送patch请求，修改会议
         response = requests.patch(self._get_url(uri), data=json.dumps(new_data),
                                   headers=headers, timeout=self.time_out)
         return response.status_code

@@ -83,6 +83,7 @@ class TencentApi(MeetingAdapter):
         headers['X-TC-Signature'] = signature
         return signature, headers
 
+    # noinspection SpellCheckingInspection
     def create(self, action):
         """create meeting"""
         if not isinstance(action, TencentCreateAction):
@@ -121,10 +122,11 @@ class TencentApi(MeetingAdapter):
             return r.status_code, resp_dict
         ret_json = r.json()
         resp_dict['mid'] = ret_json['meeting_info_list'][0]['meeting_code']
-        resp_dict['mmid'] = ret_json['meeting_info_list'][0]['meeting_id']
+        resp_dict['m_mid'] = ret_json['meeting_info_list'][0]['meeting_id']
         resp_dict['join_url'] = ret_json['meeting_info_list'][0]['join_url']
         return r.status_code, resp_dict
 
+    # noinspection SpellCheckingInspection
     def update(self, action):
         if not isinstance(action, TencentUpdateAction):
             raise RuntimeError("[TencentApi] action must be the subclass of TencentUpdateAction")
@@ -152,22 +154,17 @@ class TencentApi(MeetingAdapter):
             payload['settings']['enable_host_pause_auto_record'] = True
         else:
             payload['settings']['auto_record_type'] = 'none'
-        uri = self.update_path.format(action.mmid)
+        uri = self.update_path.format(action.m_mid)
         url = self._get_url(uri)
         signature, headers = self._get_signature('PUT', uri, json.dumps(payload))
-        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=self.time_out)
-        resp_dict = {
-            'host_id': self.host_id
-        }
+        r = requests.put(url, headers=headers, data=json.dumps(payload), timeout=self.time_out)
         if r.status_code != 200:
-            logger.error('[TencentApi] Fail to create meeting, status_code is {}'.format(r.status_code))
-            return r.status_code, resp_dict
-        ret_json = r.json()
-        resp_dict['mid'] = ret_json['meeting_info_list'][0]['meeting_code']
-        resp_dict['mmid'] = ret_json['meeting_info_list'][0]['meeting_id']
-        resp_dict['join_url'] = ret_json['meeting_info_list'][0]['join_url']
-        return r.status_code, resp_dict
+            logger.error('[TencentApi] Fail to update meeting, status_code is {},and err:{}'
+                         .format(r.status_code, r.content.decode("utf-8")))
+            return r.status_code
+        return r.status_code
 
+    # noinspection SpellCheckingInspection
     def delete(self, action):
         if not isinstance(action, TencentDeleteAction):
             raise RuntimeError("[TencentApi] action must be the subclass of TencentDeleteAction")
@@ -177,7 +174,7 @@ class TencentApi(MeetingAdapter):
             "reason_code": 1
         })
         mid = action.mid
-        uri = self.delete_path.format(action.mmid)
+        uri = self.delete_path.format(action.m_mid)
         url = self._get_url(uri)
         signature, headers = self._get_signature('POST', uri, payload)
         r = requests.post(url, headers=headers, data=payload,
@@ -193,8 +190,8 @@ class TencentApi(MeetingAdapter):
     def get_participants(self, action):
         if not isinstance(action, TencentGetParticipantsAction):
             raise RuntimeError("[TencentApi] action must be the subclass of TencentGetParticipantsAction")
-        mmid = action.mmid
-        uri = self.participants_path.format(mmid, self.host_id)
+        m_mid = action.m_mid
+        uri = self.participants_path.format(m_mid, self.host_id)
         url = self._get_url(uri)
         signature, headers = self._get_signature('GET', uri, "")
         r = requests.get(url, headers=headers, timeout=self.time_out)
@@ -236,13 +233,13 @@ class TencentApi(MeetingAdapter):
         """filter the available record"""
         match_record = dict()
         mid = action.mid
-        mmid = action.mmid
+        m_mid = action.m_mid
         date = action.date
         start = action.start
         start_time = ' '.join([date, start])
         start_timestamp = int(datetime.timestamp(datetime.strptime(start_time, '%Y-%m-%d %H:%M')))
         for record in recordings:
-            if record.get('meeting_id') != mmid:
+            if record.get('meeting_id') != m_mid:
                 continue
             if record.get('state') != 3:
                 logger.error("[TencentApi/_filter_records] {}/{} record status is:{} (1 recording/2 transcoding)"
