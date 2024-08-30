@@ -174,7 +174,7 @@ class MeetingAdapterImpl(MeetingAdapter):
         if not str(status).startswith("20"):
             logger.error('[MeetingAdapterImpl/update] {}/{}: Failed to update meeting {}'
                          .format(meeting["community"], meeting["platform"], str(status)))
-            raise MyInnerError(RetCode.STATUS_FAILED)
+            raise MyInnerError(RetCode.STATUS_MEETING_FAILED_UPDATE)
 
     def delete(self, meeting):
         action = self.meeting_action.get_delete_action(meeting["platform"], meeting)

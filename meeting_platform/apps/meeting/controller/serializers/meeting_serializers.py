@@ -228,10 +228,7 @@ class SingleMeetingSerializer(ModelSerializer):
         return value
 
     def validate(self, attrs):
-        etherpad = attrs.get("etherpad")
-        if etherpad is not None and not etherpad.startswith(settings.COMMUNITY_ETHERPAD[attrs["community"]]):
-            logger.error("invalid etherpad:{}".format(etherpad))
-            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
+        """all validate data"""
         check_duration(attrs["start"], attrs["end"], attrs["date"], datetime.now())
         attrs["update_time"] = datetime.now()
         return attrs

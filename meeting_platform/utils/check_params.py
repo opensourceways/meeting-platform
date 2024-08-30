@@ -145,7 +145,7 @@ def check_duration(start, end, date, now_time):
     if start_time <= now_time:
         logger.error('The start time {} should not be later than the current time'.format(str(start)))
         raise MyValidationError(RetCode.STATUS_START_GT_NOW)
-    if (start_time - now_time).days > 60:
+    if (start_time - now_time).days >= 60:
         logger.error('The start time {} is at most 60 days later than the current time'.format(str(start)))
         raise MyValidationError(RetCode.STATUS_START_LT_LIMIT)
     if start_time >= end_time:

@@ -7,6 +7,7 @@
 from rest_framework.authentication import BasicAuthentication
 from rest_framework.filters import SearchFilter
 from rest_framework.generics import CreateAPIView, DestroyAPIView, GenericAPIView, ListAPIView, RetrieveAPIView
+from rest_framework.permissions import IsAuthenticated
 
 from meeting_platform.utils.customized.my_pagination import MyPagination
 from meeting_platform.utils.customized.my_serializers import MySerializerParse, EmptySerializers
@@ -25,6 +26,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
     """create or list meeting"""
     serializer_class = MeetingSerializer
     authentication_classes = (BasicAuthentication,)
+    permission_classes = (IsAuthenticated,)
     queryset = MeetingApp.meeting_dao.get_queryset()
     filter_backends = [SearchFilter]
     search_fields = ['community', "mid", "id"]
@@ -66,6 +68,7 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
     serializer_class = SingleMeetingSerializer
     queryset = MeetingApp.meeting_dao.get_queryset()
     authentication_classes = (BasicAuthentication,)
+    permission_classes = (IsAuthenticated,)
     app_class = MeetingApp()
 
     @capture_my_validation_exception

@@ -96,6 +96,10 @@ class MeetingApp:
             logger.error('[MeetingApp/update]Invalid meeting id:{}'.format(meeting_id))
             raise MyValidationError(RetCode.INFORMATION_CHANGE_ERROR)
         meeting = model_to_dict(meeting)
+        etherpad = meeting_data.get("etherpad")
+        if etherpad and not etherpad.startswith(settings.COMMUNITY_ETHERPAD[meeting["community"]]):
+            logger.error("invalid etherpad:{}".format(etherpad))
+            raise MyValidationError(RetCode.STATUS_PARAMETER_ERROR)
         set_log_thread_local(request, log_key, [meeting["community"], meeting["topic"], meeting_id])
         meeting.update(meeting_data)
         meeting.update({"sequence": meeting["sequence"] + 1})
