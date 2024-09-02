@@ -173,10 +173,13 @@ class ZoomApi(MeetingAdapter):
             "authorization": "Bearer {}".format(token)}
         r = requests.get(self._get_url(uri), headers=headers, timeout=self.time_out)
         if r.status_code == 200:
-            total_records = r.json()['total_records']
-            participants = r.json()['participants']
+            ret_json = r.json()
+            total_records = ret_json['total_records']
+            participants = ret_json['participants']
             resp = {'total_records': total_records, 'participants': [{'name': x['name']} for x in participants]}
             return r.status_code, resp
+        elif r.status_code == 404:
+            return 200, r.json()
         else:
             return r.status_code, r.json()
 

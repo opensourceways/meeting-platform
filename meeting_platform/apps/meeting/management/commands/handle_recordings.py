@@ -187,10 +187,14 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         logger.info('-' * 20 + ' start to handler recordings' + '-' * 20)
         logger.info('[handle] find community: {}'.format(",".join(settings.COMMUNITY_SUPPORT)))
-        handler_recording_communities = [HandleRecording(i) for i in settings.COMMUNITY_SUPPORT]
-        pool = ThreadPool()
-        pool.map(work_flow, handler_recording_communities)
-        pool.close()
-        pool.join()
-        clear_env()
-        logger.info('-' * 20 + 'All done' + '-' * 20)
+        try:
+            handler_recording_communities = [HandleRecording(i) for i in settings.COMMUNITY_SUPPORT]
+            pool = ThreadPool()
+            pool.map(work_flow, handler_recording_communities)
+            pool.close()
+            pool.join()
+            logger.info('-' * 20 + 'All done' + '-' * 20)
+        except Exception as e:
+            logger.error("[handle_recordings/handle] err:{}, traceback:{}".format(str(e), traceback.format_exc()))
+        finally:
+            clear_env()

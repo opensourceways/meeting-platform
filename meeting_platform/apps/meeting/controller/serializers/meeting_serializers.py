@@ -173,7 +173,7 @@ class SingleMeetingSerializer(ModelSerializer):
             'end': {'required': True},
             'agenda': {'required': False},
             'etherpad': {'required': False},
-            'is_record': {'required': False},
+            'is_record': {'required': True},
             'email_list': {'read_only': True},
             'mid': {'read_only': True},
             'm_mid': {'read_only': True},

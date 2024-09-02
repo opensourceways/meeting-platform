@@ -32,7 +32,7 @@ class MeetingView(MySerializerParse, MyListModelMixin, ListAPIView, CreateAPIVie
     search_fields = ['community', "mid", "id"]
     pagination_class = MyPagination
     app_class = MeetingApp()
-    order_by = ["date"]
+    order_by = ["date", "create_time", "update_time"]
     order_type = ["asc", "desc"]
 
     @capture_my_validation_exception
@@ -92,7 +92,7 @@ class SingleMeetingView(MySerializerParse, MyRetrieveModelMixin, MyUpdateAPIView
         return ret_json(data=data)
 
 
-class MeetingParticipantsView(MyRetrieveModelMixin, GenericAPIView):
+class MeetingParticipantsView(RetrieveAPIView, GenericAPIView):
     lookup_field = "id"
     serializer_class = EmptySerializers
     queryset = MeetingApp.meeting_dao.get_queryset()

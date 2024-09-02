@@ -186,11 +186,12 @@ class MeetingAdapterImpl(MeetingAdapter):
 
     def get_participants(self, meeting):
         action = self.meeting_action.get_participants_action(meeting["platform"], meeting)
-        status = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
+        status, data = handler_meeting(meeting["community"], meeting["platform"], meeting["host_id"], action)
         if not str(status).startswith("20"):
-            logger.error('[MeetingAdapterImpl/get_participants] {}/{}: Failed to get participants {}'
-                         .format(meeting["community"], meeting["platform"], str(status)))
+            logger.error('[MeetingAdapterImpl/get_participants] {}/{}: Failed to get participants {}/{}'
+                         .format(meeting["community"], meeting["platform"], str(status), data))
             raise MyInnerError(RetCode.STATUS_FAILED)
+        return data
 
     def get_video(self, meeting):
         action = self.meeting_action.get_video_action(meeting["platform"], meeting)

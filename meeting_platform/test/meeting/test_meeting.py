@@ -54,7 +54,7 @@ class CreateMeetingViewTest(TestCommonMeeting):
 
     def _teardown(self):
         meeting = self.get_meetings()
-        print("find meeting:{}".format(len(meeting)))
+        logger.info("find meeting:{}".format(len(meeting)))
         for meeting in meeting:
             uri = DeleteMeetingViewTest.url.format(meeting.id)
             self.client.delete(uri)
@@ -275,6 +275,10 @@ class CreateMeetingViewTest(TestCommonMeeting):
     def test_create_meeting_ok_by_welink_and_not_record(self):
         self._setup()
         data = copy.deepcopy(self.data)
+        data["sponsor"] = "a" * 64
+        data["group_name"] = "b" * 64
+        data["topic"] = "c" * 128
+        data["agenda"] = "c" * 4096
         data["is_record"] = False
         ret = self.client.post(self.url, data)
         self.assertEqual(ret.status_code, status.HTTP_200_OK)
@@ -283,6 +287,10 @@ class CreateMeetingViewTest(TestCommonMeeting):
     def test_create_meeting_ok_by_zoom_and_not_record(self):
         self._setup()
         data = copy.deepcopy(self.data)
+        data["sponsor"] = "a" * 64
+        data["group_name"] = "b" * 64
+        data["topic"] = "c" * 128
+        data["agenda"] = "c" * 4096
         data["platform"] = "ZOOM"
         data["is_record"] = False
         ret = self.client.post(self.url, data)
@@ -292,6 +300,10 @@ class CreateMeetingViewTest(TestCommonMeeting):
     def test_create_meeting_ok_by_tecent_and_not_record(self):
         self._setup()
         data = copy.deepcopy(self.data)
+        data["sponsor"] = "a" * 64
+        data["group_name"] = "b" * 64
+        data["topic"] = "c" * 128
+        data["agenda"] = "c" * 4096
         data["platform"] = "TENCENT"
         data["is_record"] = False
         ret = self.client.post(self.url, data)
@@ -331,7 +343,7 @@ class UpdateMeetingViewTest(TestCommonMeeting):
 
     def _teardown(self):
         meeting = self.get_meetings()
-        print("find meeting:{}".format(len(meeting)))
+        logger.info("find meeting:{}".format(len(meeting)))
         for meeting in meeting:
             uri = DeleteMeetingViewTest.url.format(meeting.id)
             self.client.delete(uri)
@@ -521,7 +533,7 @@ class DeleteMeetingViewTest(TestCommonMeeting):
 
     def _teardown(self):
         meeting = self.get_meetings()
-        print("find meeting:{}".format(len(meeting)))
+        logger.info("find meeting:{}".format(len(meeting)))
         for meeting in meeting:
             uri = DeleteMeetingViewTest.url.format(meeting.id)
             self.client.delete(uri)
@@ -568,5 +580,131 @@ class DeleteMeetingViewTest(TestCommonMeeting):
         user = self._setup()
         meeting = self._create_meeting(user.username, is_create_meeting=True)
         ret = self.client.delete(self.url.format(meeting.id))
+        self.assertEqual(ret.status_code, status.HTTP_200_OK)
+        self._teardown()
+
+
+class ListMeetingViewTest(TestCommonMeeting):
+    url = "/inner/v1/meeting/meeting/"
+
+    def _setup(self):
+        user = self.create_user()
+        self.enable_client_auth(user.username)
+        return user
+
+    def _teardown(self):
+        meeting = self.get_meetings()
+        logger.info("find meeting:{}".format(len(meeting)))
+        for meeting in meeting:
+            uri = DeleteMeetingViewTest.url.format(meeting.id)
+            self.client.delete(uri)
+        self.clear_user()
+
+    def _create_meeting(self, username, is_create_meeting=False):
+        if is_create_meeting:
+            data = copy.deepcopy(CreateMeetingViewTest.data)
+            data["sponsor"] = username
+            data["platform"] = "TENCENT"
+            self.client.post(CreateMeetingViewTest.url, data)
+            return self.get_meeting_by_username(username)
+        data = copy.deepcopy(CreateMeetingViewTest.data)
+        available_host_id = MeetingApp()._get_and_check_conflict_meetings_by_date(data)
+        data["host_id"] = secrets.choice(available_host_id)
+        data["sponsor"] = username
+        return self.create_meeting(**data)
+
+    def test_list_ok(self):
+        user = self._setup()
+        self._create_meeting(user.username, is_create_meeting=True)
+        ret = self.client.get(self.url)
+        self.assertEqual(ret.status_code, status.HTTP_200_OK)
+        self.assertEqual(ret.data["total"], 1)
+        self.assertEqual(len(ret.data["data"]), 1)
+        self._teardown()
+
+
+class GetMeetingViewTest(TestCommonMeeting):
+    url = "/inner/v1/meeting/meeting/{}/"
+
+    def _setup(self):
+        user = self.create_user()
+        self.enable_client_auth(user.username)
+        return user
+
+    def _teardown(self):
+        meeting = self.get_meetings()
+        logger.info("find meeting:{}".format(len(meeting)))
+        for meeting in meeting:
+            uri = DeleteMeetingViewTest.url.format(meeting.id)
+            self.client.delete(uri)
+        self.clear_user()
+
+    def _create_meeting(self, username, is_create_meeting=False):
+        if is_create_meeting:
+            data = copy.deepcopy(CreateMeetingViewTest.data)
+            data["sponsor"] = username
+            self.client.post(CreateMeetingViewTest.url, data)
+            return self.get_meeting_by_username(username)
+        data = copy.deepcopy(CreateMeetingViewTest.data)
+        available_host_id = MeetingApp()._get_and_check_conflict_meetings_by_date(data)
+        data["host_id"] = secrets.choice(available_host_id)
+        data["sponsor"] = username
+        return self.create_meeting(**data)
+
+    def test_get_ok(self):
+        user = self._setup()
+        self._create_meeting(user.username)
+        meeting = self.get_meeting_by_username(user.username)
+        ret = self.client.get(self.url.format(meeting.id))
+        self.assertEqual(ret.status_code, status.HTTP_200_OK)
+        self._teardown()
+
+
+class GetMeetingParticipantsViewTest(TestCommonMeeting):
+    url = "/inner/v1/meeting/meeting/participants/{}/"
+
+    def _setup(self):
+        user = self.create_user()
+        self.enable_client_auth(user.username)
+        return user
+
+    def _teardown(self):
+        meeting = self.get_meetings()
+        logger.info("find meeting:{}".format(len(meeting)))
+        for meeting in meeting:
+            uri = DeleteMeetingViewTest.url.format(meeting.id)
+            self.client.delete(uri)
+        self.clear_user()
+
+    # noinspection SpellCheckingInspection
+    def test_get_participants_welink_ok(self):
+        user = self._setup()
+        data = copy.deepcopy(CreateMeetingViewTest.data)
+        data["sponsor"] = user.username
+        self.client.post(CreateMeetingViewTest.url, data)
+        meeting = self.get_meeting_by_username(user.username)
+        ret = self.client.get(self.url.format(meeting.id))
+        self.assertEqual(ret.status_code, status.HTTP_200_OK)
+        self._teardown()
+
+    def test_get_participants_zoom_ok(self):
+        user = self._setup()
+        data = copy.deepcopy(CreateMeetingViewTest.data)
+        data["sponsor"] = user.username
+        data["platform"] = "ZOOM"
+        self.client.post(CreateMeetingViewTest.url, data)
+        meeting = self.get_meeting_by_username(user.username)
+        ret = self.client.get(self.url.format(meeting.id))
+        self.assertEqual(ret.status_code, status.HTTP_200_OK)
+        self._teardown()
+
+    def test_get_participants_tencent_ok(self):
+        user = self._setup()
+        data = copy.deepcopy(CreateMeetingViewTest.data)
+        data["sponsor"] = user.username
+        data["platform"] = "TENCENT"
+        self.client.post(CreateMeetingViewTest.url, data)
+        meeting = self.get_meeting_by_username(user.username)
+        ret = self.client.get(self.url.format(meeting.id))
         self.assertEqual(ret.status_code, status.HTTP_200_OK)
         self._teardown()

@@ -169,11 +169,11 @@ class WkApi(MeetingAdapter):
         }
         response = requests.delete(self._get_url(self.delete_path), headers=headers, params=params,
                                    timeout=self.time_out)
-        if response.status_code != 200:
+        if response.status_code != 200 and response.json().get("error_msg") != "CONF_DATA_NOT_FOUND":
             logger.error('[WkApi] Fail to cancel meeting {}, and return data:{}'.format(action.mid, response.json()))
             return response.status_code
         logger.info('[WkApi] Cancel meeting {}'.format(action.mid))
-        return response.status_code
+        return 200
 
     def _list_history_meeting(self, action):
         """获取历史会议列表"""
