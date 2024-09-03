@@ -33,7 +33,7 @@ class MeetingApp:
     update_message_adapter_impl = [UpdateMessageEmailAdapterImpl, UpdateMessageKafKaAdapterImpl]
     delete_message_adapter_impl = [DeleteMessageEmailAdapterImpl, DeleteMessageKafKaAdapterImpl]
 
-    def _get_and_check_conflict_meetings_by_date(self, meeting):
+    def _get_and_check_conflict_meetings_by_date(self, meeting, meeting_id=None):
         """check the conflict the meeting, if not conflict and return meeting"""
         community = meeting["community"]
         platform = meeting["platform"]
@@ -47,7 +47,7 @@ class MeetingApp:
             (datetime.datetime.strptime(end, '%H:%M') + datetime.timedelta(minutes=30)),
             '%H:%M')
         meetings = self.meeting_dao.get_conflict_meeting(community, platform, date,
-                                                         start_search, end_search).values()
+                                                         start_search, end_search, meeting_id).values()
         unavailable_host_ids = [meeting['host_id'] for meeting in meetings]
         host_info = settings.COMMUNITY_HOST[meeting["community"]][meeting["platform"]]
         host_list = [key["HOST"] for key in host_info]
@@ -62,7 +62,7 @@ class MeetingApp:
         start_date_str = "{} {}".format(meeting["date"], meeting["start"])
         start_date = datetime.datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
         if int((start_date - get_cur_date()).total_seconds()) < 60 * 60:
-            raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_DELETE)
+            raise MyValidationError(RetCode.STATUS_MEETING_CANNOT_BE_OPERATE)
 
     def _send_message(self, meeting, message_handler):
         """send the message"""
@@ -104,7 +104,7 @@ class MeetingApp:
         meeting.update(meeting_data)
         meeting.update({"sequence": meeting["sequence"] + 1})
         # check meeting-conflict
-        self._get_and_check_conflict_meetings_by_date(meeting)
+        self._get_and_check_conflict_meetings_by_date(meeting, meeting_id)
         # check not update in the before in start date
         self._is_in_prepare_meeting_duration_before_meeting(meeting)
         # update meeting

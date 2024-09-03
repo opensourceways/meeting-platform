@@ -11,9 +11,12 @@ class MeetingDao:
     dao = Meeting
 
     @classmethod
-    def get_conflict_meeting(cls, community, platform, date, start_search, end_search):
+    def get_conflict_meeting(cls, community, platform, date, start_search, end_search, meeting_id=None):
+        if meeting_id is None:
+            return cls.dao.objects.filter(community=community, platform=platform, is_delete=0,
+                                          date=date, end__gt=start_search, start__lt=end_search)
         return cls.dao.objects.filter(community=community, platform=platform, is_delete=0,
-                                      date=date, end__gt=start_search, start__lt=end_search)
+                                      date=date, end__gt=start_search, start__lt=end_search).exclude(id=meeting_id)
 
     @classmethod
     def get_queryset(cls):

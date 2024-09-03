@@ -219,13 +219,12 @@ class TencentApi(MeetingAdapter):
                              .format(self.community, self.platform, r.content.decode("utf-8")))
                 return []
             if 'record_meetings' not in r.json().keys():
-                logger.error("[TencentApi/_get_records] {}/{} request record format failed, and return is:{}."
-                             .format(self.community, self.platform, r.content.decode("utf-8")))
+                logger.info("[TencentApi/_get_records] {}/{} request record format failed, and return is:{}."
+                            .format(self.community, self.platform, r.content.decode("utf-8")))
                 break
             record_meetings = r.json().get('record_meetings')
             records.extend(record_meetings)
             page += 1
-        records = list(set(records))
         return records
 
     # noinspection SpellCheckingInspection
@@ -250,7 +249,7 @@ class TencentApi(MeetingAdapter):
                 logger.error("[TencentApi/_filter_records] {}/{} record start time({}) gt the start time({}) in set"
                              .format(self.community, mid, media_start_time, start_timestamp))
                 continue
-            sorted_data = sorted(record.get('record_size'), key=lambda x: x['record_size'], reverse=True)
+            sorted_data = sorted(record.get('record_files'), key=lambda x: x['record_size'], reverse=True)
             record_file = sorted_data[0]
             if record_file.get('record_size') < self.bili_video_min_size:
                 logger.error("[TencentApi/_filter_records] {}/{} find record size lt 10M".format(self.community, mid))

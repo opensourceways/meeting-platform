@@ -107,7 +107,7 @@ class HandleRecording:
         all_vid = adapter_impl.search_all_videos()
         uploaded_bili_mid = self.meeting_dao.get_uploaded_mid_by_community_and_status(self.community,
                                                                                       UploadStatus.UPLOAD_BILI.value)
-        exist_mid = list(set(uploaded_bili_mid) - set(all_vid))
+        exist_mid = list(set(all_vid) - set(uploaded_bili_mid))
         logger.info('[HandleRecording/check_upload_results] {}:Find uploaded bili video:{}'.
                     format(self.community, ",".join(exist_mid)))
         self.meeting_dao.update_upload_status_by_community_and_mid(self.community, exist_mid,
