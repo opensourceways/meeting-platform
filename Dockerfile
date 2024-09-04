@@ -47,7 +47,7 @@ RUN echo > /etc/issue && echo > /etc/issue.net && echo > /etc/motd
 RUN sed -i 's/^PASS_MAX_DAYS.*/PASS_MAX_DAYS   90/' /etc/login.defs
 RUN echo 'set +o history' >> /root/.bashrc
 RUN rm -rf /tmp/*
-RUN history -c && echo "set +o history" >> /home/meetingserver/.bashrc  && echo "umask 027" >> /home/meetingserver/.bashrc && source /home/meetingserver/.bashrc
+RUN history -c && echo "set +o history" >> /home/meetingplatform/.bashrc  && echo "umask 027" >> /home/meetingplatform/.bashrc && source /home/meetingplatform/.bashrc
 
 # 4.Run server
 WORKDIR /home/meetingplatform/meeting-platform
